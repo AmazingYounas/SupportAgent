@@ -1,0 +1,166 @@
+2026-03-20 00:53:24,103 - app.database.connection - INFO - Database engine created for: sqlite:///./agent_db_fallback.sqlite
+2026-03-20 00:53:24,158 - app.main - INFO - ✅ Database initialized successfully
+2026-03-20 00:53:24,158 - app.main - INFO - 🚀 AI Agent Backend Services started
+2026-03-20 00:53:24,158 - app.main - INFO - 📝 Logging to: agent.log
+2026-03-20 00:53:24,158 - app.main - INFO - 🔧 Debug mode: False
+2026-03-20 00:53:47,235 - app.api.routes - INFO - [Duplex] Connection: duplex_5ccqjsddm
+2026-03-20 00:53:49,206 - app.agent.graph - WARNING - [Graph] recursion_limit not supported - using default limits
+2026-03-20 00:53:53,481 - app.voice.vad - INFO - [VAD] speech_start_detected
+2026-03-20 00:53:53,482 - app.api.routes - INFO - [Duplex:duplex_5ccqjsddm] speech_start_detected
+2026-03-20 00:53:59,971 - app.api.routes - INFO - [Duplex:duplex_5ccqjsddm] client INTERRUPT signal
+2026-03-20 00:53:59,972 - app.voice.session - INFO - [Session:duplex_5ccqjsddm] pipeline cancelled
+2026-03-20 00:54:12,043 - app.api.routes - INFO - [Duplex:duplex_5ccqjsddm] client INTERRUPT signal
+2026-03-20 00:54:12,045 - app.voice.session - INFO - [Session:duplex_5ccqjsddm] pipeline cancelled
+2026-03-20 00:54:16,689 - app.voice.vad - INFO - [VAD] speech_end_detected — 23.21s, 375,236b
+2026-03-20 00:54:16,691 - app.api.routes - INFO - [Duplex:duplex_5ccqjsddm] speech_end_detected — 375,236b
+2026-03-20 00:54:16,696 - app.voice.session - INFO - [Session:duplex_5ccqjsddm] pipeline cancelled
+2026-03-20 00:54:16,698 - app.api.routes - INFO - [Duplex:duplex_5ccqjsddm] connection closed
+2026-03-20 00:54:21,530 - app.api.routes - INFO - [Duplex] Connection: duplex_5ccqjsddm
+2026-03-20 00:54:21,590 - app.agent.graph - WARNING - [Graph] recursion_limit not supported - using default limits
+2026-03-20 00:54:24,143 - app.voice.vad - INFO - [VAD] speech_start_detected
+2026-03-20 00:54:24,144 - app.api.routes - INFO - [Duplex:duplex_5ccqjsddm] speech_start_detected
+2026-03-20 00:54:57,477 - app.api.routes - INFO - [Duplex:duplex_5ccqjsddm] client INTERRUPT signal
+2026-03-20 00:54:57,479 - app.voice.session - INFO - [Session:duplex_5ccqjsddm] pipeline cancelled
+2026-03-20 01:03:19,649 - app.voice.vad - INFO - [VAD] speech_end_detected — 535.49s, 8,651,839b
+2026-03-20 01:03:19,662 - app.api.routes - INFO - [Duplex:duplex_5ccqjsddm] speech_end_detected — 8,651,839b
+2026-03-20 01:03:19,726 - app.voice.session - INFO - [Session:duplex_5ccqjsddm] pipeline cancelled
+2026-03-20 01:03:19,728 - app.api.routes - INFO - [Duplex:duplex_5ccqjsddm] connection closed
+2026-03-20 01:03:24,147 - app.database.connection - INFO - Database engine created for: sqlite:///./agent_db_fallback.sqlite
+2026-03-20 01:03:24,152 - app.main - INFO - ✅ Database initialized successfully
+2026-03-20 01:03:24,153 - app.main - INFO - 🚀 AI Agent Backend Services started
+2026-03-20 01:03:24,170 - app.main - INFO - 📝 Logging to: agent.log
+2026-03-20 01:03:24,179 - app.main - INFO - 🔧 Debug mode: False
+2026-03-20 01:03:29,058 - app.database.connection - INFO - Database engine created for: sqlite:///./agent_db_fallback.sqlite
+2026-03-20 01:03:29,075 - app.main - INFO - ✅ Database initialized successfully
+2026-03-20 01:03:29,078 - app.main - INFO - 🚀 AI Agent Backend Services started
+2026-03-20 01:03:29,084 - app.main - INFO - 📝 Logging to: agent.log
+2026-03-20 01:03:29,088 - app.main - INFO - 🔧 Debug mode: False
+2026-03-20 01:06:18,618 - app.database.connection - INFO - Database engine created for: sqlite:///./agent_db_fallback.sqlite
+2026-03-20 01:06:18,622 - app.main - INFO - ✅ Database initialized successfully
+2026-03-20 01:06:18,622 - app.main - INFO - 🚀 AI Agent Backend Services started
+2026-03-20 01:06:18,623 - app.main - INFO - 📝 Logging to: agent.log
+2026-03-20 01:06:18,623 - app.main - INFO - 🔧 Debug mode: False
+2026-03-20 01:06:21,501 - app.database.connection - INFO - Database engine created for: sqlite:///./agent_db_fallback.sqlite
+2026-03-20 01:06:21,506 - app.main - INFO - ✅ Database initialized successfully
+2026-03-20 01:06:21,507 - app.main - INFO - 🚀 AI Agent Backend Services started
+2026-03-20 01:06:21,507 - app.main - INFO - 📝 Logging to: agent.log
+2026-03-20 01:06:21,507 - app.main - INFO - 🔧 Debug mode: False
+2026-03-20 01:06:38,567 - app.api.routes - INFO - [Duplex] Connection: duplex_3k5fbboi2
+2026-03-20 01:06:39,531 - app.agent.graph - WARNING - [Graph] recursion_limit not supported - using default limits
+2026-03-20 01:06:43,205 - app.voice.vad - INFO - [VAD] 🎵 feed 3060b (WebM mode) state=IDLE active=True size_threshold=1500b
+2026-03-20 01:06:43,206 - app.voice.vad - INFO - [VAD] speech_start_detected
+2026-03-20 01:06:43,206 - app.api.routes - INFO - [Duplex:duplex_3k5fbboi2] ✅ speech_start_detected
+2026-03-20 01:06:43,503 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16453 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:43,801 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16171 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:44,101 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16126 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:44,408 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16202 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:44,707 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16157 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:45,006 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16226 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:45,307 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16124 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:45,606 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16412 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:45,907 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16313 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:46,206 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16557 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:46,506 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16190 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:46,806 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16175 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:47,109 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16512 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:47,407 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16208 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:47,705 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16113 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:48,007 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=15999 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:48,306 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=15874 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:48,604 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16556 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:48,908 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16294 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:49,207 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16248 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:49,507 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16516 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:49,807 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16170 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:50,108 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16215 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:50,407 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16268 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:50,707 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16350 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:51,006 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16286 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:51,305 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16165 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:51,604 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16276 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:51,902 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16139 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:52,203 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16128 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:52,502 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16530 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:52,802 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16165 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:53,102 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16236 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:53,404 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16237 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:53,708 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16313 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:54,002 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16002 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:54,305 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16401 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:54,607 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16189 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:54,906 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16311 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:55,206 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=15964 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:55,506 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16339 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:55,804 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16196 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:56,108 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=15878 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:56,406 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16106 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:56,706 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16038 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:57,006 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16327 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:57,308 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16270 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:57,607 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=15991 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:57,908 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16285 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:58,206 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16513 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:58,504 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16369 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:58,805 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16683 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:59,107 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16198 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:59,406 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16315 state=SPEAKING active=True threshold=300
+2026-03-20 01:06:59,705 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16262 state=SPEAKING active=True threshold=300
+2026-03-20 01:07:00,005 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16237 state=SPEAKING active=True threshold=300
+2026-03-20 01:07:00,303 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16095 state=SPEAKING active=True threshold=300
+2026-03-20 01:07:00,606 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16177 state=SPEAKING active=True threshold=300
+2026-03-20 01:07:00,907 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16250 state=SPEAKING active=True threshold=300
+2026-03-20 01:07:01,203 - app.voice.vad - INFO - [VAD] 🎵 feed 4846b energy=16285 state=SPEAKING active=True threshold=300
+2026-03-20 01:07:01,307 - app.voice.vad - INFO - [VAD] speech_end_detected — 18.10s, 293,820b
+2026-03-20 01:07:01,307 - app.api.routes - INFO - [Duplex:duplex_3k5fbboi2] ✅ speech_end_detected — 293,820b
+2026-03-20 01:07:01,308 - app.api.routes - INFO - [Duplex:duplex_3k5fbboi2] 🚀 PIPELINE STARTING (as background task)
+2026-03-20 01:07:01,310 - app.api.routes - INFO - [Duplex:duplex_3k5fbboi2] ✅ Pipeline task created and registered
+2026-03-20 01:07:01,312 - app.api.routes - INFO - [Duplex:duplex_3k5fbboi2] ⏳ Waiting for pipeline task to complete...
+2026-03-20 01:07:01,313 - app.api.routes - WARNING - [Duplex:duplex_3k5fbboi2] ⚠️ Pipeline was cancelled
+2026-03-20 01:07:01,314 - app.voice.session - INFO - [Session:duplex_3k5fbboi2] pipeline cancelled
+2026-03-20 01:07:01,315 - app.api.routes - INFO - [Duplex:duplex_3k5fbboi2] connection closed
+2026-03-20 01:07:04,873 - app.database.connection - INFO - Database engine created for: sqlite:///./agent_db_fallback.sqlite
+2026-03-20 01:07:04,879 - app.main - INFO - ✅ Database initialized successfully
+2026-03-20 01:07:04,879 - app.main - INFO - 🚀 AI Agent Backend Services started
+2026-03-20 01:07:04,880 - app.main - INFO - 📝 Logging to: agent.log
+2026-03-20 01:07:04,880 - app.main - INFO - 🔧 Debug mode: False
+2026-03-20 01:28:44,217 - app.database.connection - INFO - Database engine created for: sqlite:///./agent_db_fallback.sqlite
+2026-03-20 01:28:44,221 - app.main - INFO - ✅ Database initialized successfully
+2026-03-20 01:28:44,222 - app.main - INFO - 🚀 AI Agent Backend Services started
+2026-03-20 01:28:44,222 - app.main - INFO - 📝 Logging to: agent.log
+2026-03-20 01:28:44,222 - app.main - INFO - 🔧 Debug mode: False
+2026-03-20 01:29:41,172 - app.api.routes - INFO - [WS] Voice connection: test_rv45wt3yz
+2026-03-20 01:29:42,125 - app.agent.graph - WARNING - [Graph] recursion_limit not supported - using default limits
+2026-03-20 01:30:05,381 - app.api.routes - INFO - [WS] END_OF_SPEECH — 16 chunks, 75,750 bytes
+2026-03-20 01:30:05,382 - app.api.routes - INFO - [TIMING] END_OF_SPEECH: 1773952205381.869
+2026-03-20 01:30:05,383 - app.services.voice_service - INFO - [STT] Sending 75,750 bytes to ElevenLabs Scribe
+2026-03-20 01:30:05,384 - app.services.voice_service - INFO - [TIMING] STT_START: 1773952205384.457
+2026-03-20 01:30:07,066 - app.services.voice_service - INFO - [STT] Transcribed: Hello, and can you help me with something please?
+2026-03-20 01:30:07,067 - app.api.routes - INFO - [TIMING] STT_COMPLETE: 1773952207067.591
+2026-03-20 01:30:07,068 - app.api.routes - INFO - [WS] Transcribed: Hello, and can you help me with something please?
+2026-03-20 01:30:09,041 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-20 01:30:09,053 - app.agent.agent - INFO - [TIMING] LLM_FIRST_TOKEN: 1773952209053.231
+2026-03-20 01:30:09,053 - app.agent.agent - INFO - [TIMING] LLM_TOKEN: Of 1773952209053.764
+2026-03-20 01:30:09,055 - app.agent.agent - INFO - [TIMING] LLM_TOKEN:  course 1773952209055.217
+2026-03-20 01:30:09,057 - app.agent.agent - INFO - [TIMING] LLM_TOKEN: ! 1773952209057.631
+2026-03-20 01:30:09,059 - app.agent.agent - INFO - [TIMING] LLM_TOKEN:  I'm 1773952209059.884
+2026-03-20 01:30:09,064 - app.agent.agent - INFO - [TIMING] LLM_TOKEN:  here 1773952209064.669
+2026-03-20 01:30:09,066 - app.agent.agent - INFO - [TIMING] LLM_TOKEN:  to 1773952209066.864
+2026-03-20 01:30:09,068 - app.agent.agent - INFO - [TIMING] LLM_TOKEN:  help 1773952209068.609
+2026-03-20 01:30:09,069 - app.agent.agent - INFO - [TIMING] LLM_TOKEN: . 1773952209069.961
+2026-03-20 01:30:09,151 - app.agent.agent - INFO - [TIMING] LLM_TOKEN:  What 1773952209151.563
+2026-03-20 01:30:09,156 - app.agent.agent - INFO - [TIMING] LLM_TOKEN:  do 1773952209156.270
+2026-03-20 01:30:09,159 - app.agent.agent - INFO - [TIMING] LLM_TOKEN:  you 1773952209159.562
+2026-03-20 01:30:09,161 - app.agent.agent - INFO - [TIMING] LLM_TOKEN:  need 1773952209161.697
+2026-03-20 01:30:09,204 - app.agent.agent - INFO - [TIMING] LLM_TOKEN:  assistance 1773952209204.783
+2026-03-20 01:30:09,206 - app.agent.agent - INFO - [TIMING] LLM_TOKEN:  with 1773952209206.784
+2026-03-20 01:30:09,215 - app.agent.agent - INFO - [TIMING] LLM_TOKEN:  today 1773952209215.735
+2026-03-20 01:30:09,217 - app.agent.agent - INFO - [TIMING] LLM_TOKEN: ? 1773952209217.316
+2026-03-20 01:30:09,640 - app.services.voice_service - INFO - [TIMING] TTS_FIRST_CHUNK: 1773952209640.585
+2026-03-20 01:30:09,641 - app.api.routes - INFO - [TIMING] AUDIO_SENT_FIRST: 1773952209641.613
+2026-03-20 01:30:09,965 - app.api.routes - INFO - --- TIMING SUMMARY ---
+STT duration: 1685.721923828125 ms
+Time to first LLM token: 3672.374267578125 ms
+Time to first audio: 4259.744140625 ms
+TOTAL TTFR: 4259.744140625 ms
+----------------
+2026-03-20 01:30:09,965 - app.api.routes - INFO - [WS] Client disconnected during recording: test_rv45wt3yz

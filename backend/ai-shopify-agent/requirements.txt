@@ -20,12 +20,13 @@ pydantic-settings>=2.0.0
 
 # HTTP & WebSockets
 httpx>=0.27.0
-websockets>=13.0
+websockets>=13.0  # Required for Deepgram streaming STT
 requests>=2.31.0
 aiohttp>=3.9.0
 
-# Voice (ElevenLabs)
+# Voice Services
 elevenlabs>=2.0.0
+deepgram-sdk>=3.0.0  # Official Deepgram SDK
 
 # Testing
 pytest>=8.0.0

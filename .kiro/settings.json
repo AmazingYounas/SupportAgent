@@ -1,0 +1,13 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/backend/ai-shopify-agent/.venv/Scripts/python.exe",
+  "python.terminal.activateEnvironment": true,
+  "python.terminal.activateEnvInCurrentTerminal": true,
+  "terminal.integrated.env.windows": {
+    "VIRTUAL_ENV": "${workspaceFolder}/backend/ai-shopify-agent/.venv"
+  },
+  "terminal.integrated.shellArgs.windows": [
+    "-NoExit",
+    "-Command",
+    "& '${workspaceFolder}/backend/ai-shopify-agent/.venv/Scripts/Activate.ps1'"
+  ]
+}

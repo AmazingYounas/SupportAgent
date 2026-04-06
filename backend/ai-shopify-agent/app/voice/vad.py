@@ -1,118 +1,97 @@
 """
-Voice Activity Detection (VAD) — Energy-based, PCM Int16 aware.
+Voice Activity Detection (VAD) — Format-agnostic, production-ready.
 
-Accepts raw PCM Int16 LE chunks (48kHz mono, ~20ms each from AudioWorklet).
-Computes average absolute amplitude per chunk as the activity signal.
+Accepts any audio format (WebM, PCM, etc.) and uses appropriate detection method:
+- PCM: Energy-based detection (amplitude threshold)
+- WebM/Opus: Byte-size heuristic (compressed size indicates activity)
 
 State machine:
-  IDLE     → SPEAKING  (energy > SPEECH_THRESHOLD)
-  SPEAKING → SILENCE   (energy < SILENCE_THRESHOLD for one chunk)
-  SILENCE  → SPEAKING  (energy > SPEECH_THRESHOLD — false silence)
-  SILENCE  → IDLE      (silence held for SILENCE_DURATION_S → fires speech_end)
+  IDLE     → SPEAKING  (activity detected)
+  SPEAKING → SILENCE   (activity drops)
+  SILENCE  → SPEAKING  (false silence, activity resumes)
+  SILENCE  → IDLE      (silence held for threshold duration → fires speech_end)
 """
 import asyncio
 import logging
-import struct
 import time
 from enum import Enum, auto
 from typing import Callable, Awaitable
 
-logger = logging.getLogger(__name__)
+from app.config import settings
+from app.voice.audio_utils import compute_audio_activity, WEBM_MAGIC
 
-# ── Tunable thresholds ────────────────────────────────────────────────────
-# Average absolute amplitude out of 32767 (for PCM mode).
-# Raise SPEECH_THRESHOLD if background noise triggers false starts.
-SPEECH_THRESHOLD  = 300    # ~0.9% of full scale — triggers speech_start
-SILENCE_THRESHOLD = 150    # below this = silence
-SILENCE_DURATION_S = 0.65  # seconds of continuous silence before speech_end
-MIN_SPEECH_DURATION_S = 0.25  # ignore utterances shorter than this
-MIN_SPEECH_BYTES = 3000    # ignore buffers smaller than this (for WebM: ~3KB = ~0.3s)
+logger = logging.getLogger(__name__)
 
 
 class VADState(Enum):
-    IDLE     = auto()
+    IDLE = auto()
     SPEAKING = auto()
-    SILENCE  = auto()
-
-
-def _pcm_energy(chunk: bytes) -> float:
-    """
-    Compute average absolute amplitude of a raw PCM Int16 LE buffer.
-    Returns a float in [0, 32767].
-    Returns 0.0 for empty or malformed input.
-    
-    For WebM/Opus chunks (which are NOT PCM), this will return garbage values.
-    The VAD falls back to byte-size heuristics in that case.
-    """
-    n = len(chunk) // 2  # number of Int16 samples
-    if n == 0:
-        return 0.0
-    
-    # Quick check: if this looks like WebM (starts with 0x1A 0x45 0xDF 0xA3), 
-    # return a signal value that triggers byte-size fallback
-    if len(chunk) >= 4 and chunk[0:4] == b'\x1a\x45\xdf\xa3':
-        return -1.0  # Signal: not PCM, use byte-size heuristic
-    
-    try:
-        # struct.unpack is faster than numpy for small chunks
-        samples = struct.unpack_from(f"<{n}h", chunk)
-        return sum(abs(s) for s in samples) / n
-    except struct.error:
-        # Not valid PCM, return signal for byte-size fallback
-        return -1.0
+    SILENCE = auto()
 
 
 class VAD:
     """
-    Stateful VAD for a single WebSocket session.
-
-    Designed for raw PCM Int16 LE input (AudioWorklet output).
-    Also tolerates WebM/Opus chunks from MediaRecorder by falling back
-    to a byte-size heuristic when the buffer is not valid PCM
-    (i.e. length is odd or decoding fails).
-
+    Stateful Voice Activity Detector for a single session.
+    
+    Features:
+    - Format-agnostic (works with WebM, PCM, or any audio format)
+    - Configurable thresholds via settings
+    - Automatic speech_start/speech_end callbacks
+    - Minimum duration filtering (ignores very short utterances)
+    
     Usage:
-        vad = VAD(on_speech_start=..., on_speech_end=...)
-        await vad.feed(chunk_bytes)   # every incoming audio chunk
-        await vad.flush()             # on disconnect
+        vad = VAD(
+            on_speech_start=async_callback,
+            on_speech_end=async_callback_with_buffer
+        )
+        await vad.feed(audio_chunk)  # Call for each incoming chunk
+        await vad.flush()            # Call on disconnect
     """
 
     def __init__(
         self,
         on_speech_start: Callable[[], Awaitable[None]],
-        on_speech_end:   Callable[[bytes], Awaitable[None]],
+        on_speech_end: Callable[[bytes], Awaitable[None]],
     ):
         self._on_speech_start = on_speech_start
-        self._on_speech_end   = on_speech_end
+        self._on_speech_end = on_speech_end
 
-        self._state            = VADState.IDLE
-        self._speech_buffer:   list[bytes] = []
+        self._state = VADState.IDLE
+        self._speech_buffer: list[bytes] = []
         self._speech_start_ts: float = 0.0
-        self._silence_task:    asyncio.Task | None = None
-
-    # ── Public API ────────────────────────────────────────────────────────
+        self._silence_task: asyncio.Task | None = None
+        self._webm_header: bytes | None = None
 
     async def feed(self, chunk: bytes) -> None:
-        """Process one incoming audio chunk."""
-        energy    = _pcm_energy(chunk)
+        """
+        Process one incoming audio chunk.
         
-        # Fallback for WebM/Opus: use byte-size heuristic
-        # WebM chunks from MediaRecorder are typically 2-20KB for 250ms of audio
-        if energy < 0:  # Signal from _pcm_energy that this is not PCM
-            # Use byte-size as activity signal
-            # Typical WebM chunk: 2-20KB for 250ms
-            # Silence/noise: < 1KB
-            is_active = len(chunk) >= 1500  # ~1.5KB threshold
+        Automatically detects format and applies appropriate activity detection.
+        Triggers callbacks when speech starts/ends.
+        """
+        if len(chunk) >= 4 and chunk[:4] == WEBM_MAGIC:
+            self._webm_header = chunk
+            logger.info(f"[VAD] Captured WebM header ({len(chunk)}b)")
+            return
+
+        is_active, metadata = compute_audio_activity(chunk)
+        
+        # Log activity with format-specific details (INFO level for debugging)
+        if metadata["method"] == "energy":
             logger.info(
-                f"[VAD] 🎵 feed {len(chunk)}b (WebM mode) "
-                f"state={self._state.name} active={is_active} size_threshold=1500b"
+                f"[VAD] 🎵 {metadata['size']}b | "
+                f"energy={metadata['energy']:.0f} | "
+                f"state={self._state.name} | "
+                f"active={is_active} | "
+                f"threshold={settings.VAD_SPEECH_THRESHOLD}"
             )
         else:
-            # PCM mode: use energy threshold
-            is_active = energy >= SPEECH_THRESHOLD
             logger.info(
-                f"[VAD] 🎵 feed {len(chunk)}b energy={energy:.0f} "
-                f"state={self._state.name} active={is_active} threshold={SPEECH_THRESHOLD}"
+                f"[VAD] 🎵 {metadata['size']}b | "
+                f"format={metadata['format']} | "
+                f"state={self._state.name} | "
+                f"active={is_active} | "
+                f"threshold={settings.VAD_WEBM_THRESHOLD}b"
             )
 
         if is_active:
@@ -122,55 +101,99 @@ class VAD:
             if self._state == VADState.IDLE:
                 self._state = VADState.SPEAKING
                 self._speech_start_ts = time.monotonic()
-                logger.info("[VAD] speech_start_detected")
+                logger.info("[VAD] ✅ speech_start_detected")
                 await self._on_speech_start()
 
             elif self._state == VADState.SILENCE:
                 self._state = VADState.SPEAKING
-                logger.debug("[VAD] silence cancelled — user resumed")
+                logger.debug("[VAD] 🔄 silence cancelled — user resumed speaking")
+
+            # Check hard max limit
+            if self._state == VADState.SPEAKING:
+                duration = time.monotonic() - self._speech_start_ts
+                if duration > settings.VAD_MAX_SPEECH_DURATION:
+                    logger.warning(f"[VAD] ⚠️ Max speech duration ({settings.VAD_MAX_SPEECH_DURATION}s) reached — forcing end")
+                    asyncio.create_task(self.force_end())
 
         else:
-            # Low-energy chunk
+            # Low-activity chunk
             if self._state == VADState.SPEAKING:
                 self._state = VADState.SILENCE
                 self._start_silence_timer()
 
     async def flush(self) -> None:
-        """Force speech_end — call on client disconnect."""
+        """
+        Force speech_end event.
+        Call this when the connection closes to process any buffered audio.
+        """
         self._cancel_silence_timer()
         if self._state in (VADState.SPEAKING, VADState.SILENCE):
             await self._fire_speech_end()
 
-    # ── Internal ──────────────────────────────────────────────────────────
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # Internal Methods
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     def _start_silence_timer(self) -> None:
+        """Start countdown to speech_end."""
         self._cancel_silence_timer()
         self._silence_task = asyncio.create_task(self._silence_timeout())
 
     def _cancel_silence_timer(self) -> None:
+        """Cancel pending speech_end countdown."""
         if self._silence_task and not self._silence_task.done():
             self._silence_task.cancel()
         self._silence_task = None
 
+    async def force_end(self) -> None:
+        """Force speech_end immediately, bypassing silence timeout."""
+        self._cancel_silence_timer()
+        if self._state in (VADState.SPEAKING, VADState.SILENCE):
+            await self._fire_speech_end()
+
     async def _silence_timeout(self) -> None:
+        """Wait for silence duration, then fire speech_end."""
+        # Adaptive VAD: Faster cutoff for short phrases, more breathing room for long monologues.
+        duration = time.monotonic() - self._speech_start_ts
+        silence_thresh = 0.35 if duration < 1.5 else 0.50
+        
         try:
-            await asyncio.sleep(SILENCE_DURATION_S)
+            await asyncio.sleep(silence_thresh)
             if self._state == VADState.SILENCE:
                 await self._fire_speech_end()
         except asyncio.CancelledError:
             pass
+        except Exception as e:
+            logger.error(f"[VAD] ❌ Error in speech_end callback: {e}", exc_info=True)
+        finally:
+            self._silence_task = None
 
     async def _fire_speech_end(self) -> None:
+        """
+        Trigger speech_end callback with collected audio buffer.
+        Filters out very short utterances (likely noise).
+        Prepends stored WebM header when the buffer lacks one.
+        """
         duration = time.monotonic() - self._speech_start_ts
-        audio    = b"".join(self._speech_buffer)
-        self._speech_buffer = []
-        self._state         = VADState.IDLE
+        audio = b"".join(self._speech_buffer)
 
-        if duration < MIN_SPEECH_DURATION_S or len(audio) < MIN_SPEECH_BYTES:
+        if len(audio) >= 4 and audio[:4] != WEBM_MAGIC and self._webm_header is not None:
+            logger.info("[VAD] Buffer missing WebM header — prepending stored header")
+            audio = self._webm_header + audio
+
+        self._speech_buffer = []
+        self._state = VADState.IDLE
+
+        # Filter out very short utterances
+        if duration < settings.VAD_MIN_SPEECH_DURATION or len(audio) < settings.VAD_MIN_SPEECH_BYTES:
             logger.debug(
-                f"[VAD] utterance too short ({duration:.2f}s, {len(audio)}b) — ignored"
+                f"[VAD] ⚠️ Utterance too short "
+                f"({duration:.2f}s, {len(audio)}b) — ignored"
             )
             return
 
-        logger.info(f"[VAD] speech_end_detected — {duration:.2f}s, {len(audio):,}b")
+        logger.info(
+            f"[VAD] ✅ speech_end_detected — "
+            f"{duration:.2f}s, {len(audio):,}b"
+        )
         await self._on_speech_end(audio)

@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "name": "AI Log Monitor",
+  "description": "After every agent action, read the latest server logs and flag any errors, warnings, STT failures, or unexpected behavior. Summarize what happened and suggest fixes if needed.",
+  "version": "1",
+  "when": {
+    "type": "agentStop"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Read the last 60 lines of backend/ai-shopify-agent/agent.log and the running server process output (terminalId: 3). Look for: ERROR, WARNING, STT failures, empty transcripts, TTS errors, LLM errors, connection drops, or anything unexpected. Print a concise status summary: what worked, what failed, and any recommended fix. If everything is clean, just say \"✅ All clear\"."
+  },
+  "workspaceFolderName": "SupportAgent",
+  "shortName": "monitor-agent-logs"
+}

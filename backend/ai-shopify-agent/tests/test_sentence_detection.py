@@ -1,16 +1,15 @@
 """
-Test suite for FIX 5: Smart sentence boundary detection.
-Ensures agent doesn't stutter on abbreviations, decimals, URLs, or ellipsis.
+Sentence boundary detection tests for streaming TTS chunking.
 """
 import pytest
-from app.services.voice_service import _is_sentence_boundary
+from app.voice.sentence_detector import is_sentence_boundary
 
 
 def count_sentences(text: str) -> int:
     """Count how many sentence boundaries are detected in text."""
     count = 0
     for i in range(len(text)):
-        if _is_sentence_boundary(text, i):
+        if is_sentence_boundary(text, i):
             count += 1
     return count
 

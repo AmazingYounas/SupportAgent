@@ -1,6 +1,5 @@
 from typing import Tuple, AsyncGenerator, Optional, Callable, Awaitable
 from sqlalchemy.orm import Session
-from langchain_core.messages import SystemMessage
 import asyncio
 import logging
 import time
@@ -10,7 +9,6 @@ from app.agent.state import ConversationState
 from app.agent.prompts import SYSTEM_PROMPT
 
 from app.services.order_service import OrderService
-from app.services.shopify_service import ShopifyService
 from app.services.voice_service import VoiceService
 from app.memory.session_memory import SessionMemory
 from app.memory.long_term_memory import LongTermMemory
@@ -28,7 +26,6 @@ class SupportAgent:
     def __init__(self, db_session: Optional[Session] = None):
         self.db = db_session
 
-        self.shopify_service = ShopifyService()
         self.order_service = OrderService(self.db)
         self.voice_service = VoiceService()
 
@@ -36,15 +33,12 @@ class SupportAgent:
             self.long_term_memory = LongTermMemory(self.db)
         else:
             self.long_term_memory = None
-            logger.warning("[SupportAgent] Running without database — long-term memory disabled")
 
         self.tools = create_tools()
 
         for tool in self.tools:
             if hasattr(tool, "order_service"):
                 tool.order_service = self.order_service
-            if hasattr(tool, "shopify_service"):
-                tool.shopify_service = self.shopify_service
             if hasattr(tool, "long_term_memory") and self.long_term_memory:
                 tool.long_term_memory = self.long_term_memory
 
@@ -109,7 +103,6 @@ class SupportAgent:
         yielding audio bytes as soon as the first sentence is ready —
         without waiting for the LLM to finish.
 
-        FIX 2: Injects thinking filler if LLM takes >800ms.
         Guarantees session memory is updated via try/finally even if TTS
         fails or the caller cancels mid-stream.
         """
@@ -162,6 +155,10 @@ class SupportAgent:
             if completed_normally and full_response:
                 stored_response = full_response
                 session_memory.add_ai_message(stored_response)
+            elif not completed_normally:
+                # Cancellation/error path: avoid keeping orphan user turns
+                # without a corresponding assistant response.
+                session_memory.remove_last_user_message(user_message)
             # IMPORTANT: Do not close aiohttp sessions per turn.
             # VoiceService teardown happens in SupportAgent.aclose().
 

@@ -31,10 +31,13 @@ class ShopifyService:
     def __init__(self):
         self.shop_url = settings.SHOPIFY_SHOP_URL.strip("/")
         self.api_version = settings.SHOPIFY_API_VERSION
+        access_token = settings.SHOPIFY_ADMIN_ACCESS_TOKEN
+        # Shopify integration is optional — no warning when not configured.
         self.headers = {
             "Content-Type": "application/json",
-            "X-Shopify-Access-Token": settings.SHOPIFY_API_SECRET
+            "X-Shopify-Access-Token": access_token,
         }
+        self._configured = bool(access_token and settings.SHOPIFY_SHOP_URL)
 
     async def _make_request(
         self,

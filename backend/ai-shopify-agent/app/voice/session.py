@@ -44,6 +44,11 @@ class DuplexSession:
     #  Pipeline task management                                            #
     # ------------------------------------------------------------------ #
 
+    @property
+    def pipeline_task(self) -> Optional[asyncio.Task]:
+        """Public read accessor for the active pipeline task."""
+        return self._pipeline_task
+
     def set_pipeline_task(self, task: asyncio.Task) -> None:
         self._pipeline_task = task
 
@@ -86,3 +91,7 @@ class DuplexSession:
     @property
     def ai_is_speaking(self) -> bool:
         return self.state == SpeakingState.AI_SPEAKING
+
+    @property
+    def user_is_speaking(self) -> bool:
+        return self.state == SpeakingState.USER_SPEAKING

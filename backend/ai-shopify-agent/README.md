@@ -1,137 +1,185 @@
-# AI Shopify Agent Backend
+# AI Shopify Voice Agent
 
-Text and Zero-Latency Streaming Voice Assistant for E-Commerce.
+Production-ready voice assistant for e-commerce with real-time speech processing, LLM integration, and text-to-speech capabilities.
 
-## Architecture
+## 🏗️ Project Structure
 
-- **FastAPI**: REST API + WebSocket server
-- **LangGraph**: Stateful AI agent workflow
-- **LangChain**: LLM orchestration
-- **PostgreSQL**: Persistent storage
-- **OpenAI GPT-4**: Agent reasoning
-- **ElevenLabs**: Voice streaming (optional)
-
-## Setup
-
-### 1. Prerequisites
-
-- **Python 3.13.12** (Latest Stable - RECOMMENDED)
-  - Download: https://www.python.org/downloads/
-  - Direct: https://www.python.org/ftp/python/3.13.12/python-3.13.12-amd64.exe
-  - Why 3.13? Python 3.12.13+ no longer provides Windows installers
-  - See `PYTHON_UPGRADE_GUIDE.md` for detailed instructions
-- PostgreSQL database
-- OpenAI API key
-- Shopify API credentials
-
-### 2. Quick Installation (Automated)
-
-**Option A: PowerShell (Recommended)**
-```powershell
-# Run the setup script
-.\setup_python313.ps1
+```
+backend/ai-shopify-agent/
+├── app/                          # Main application code
+│   ├── agent/                    # LLM agent logic
+│   ├── api/                      # API endpoints & WebSocket
+│   ├── database/                 # Database layer
+│   ├── memory/                   # Conversation memory
+│   ├── services/                 # External services (STT, TTS, Shopify)
+│   ├── tools/                    # LLM tools
+│   ├── voice/                    # Voice processing (VAD, pipeline)
+│   ├── utils/                    # Utilities
+│   ├── config.py                 # Configuration
+│   └── main.py                   # FastAPI app entry
+├── client/                       # TypeScript React client
+│   ├── types.ts                 # Type definitions
+│   ├── audioUtils.ts            # Audio processing
+│   ├── VoiceAgentClient.ts      # WebSocket client
+│   ├── App.tsx                  # React UI
+│   └── ...
+├── tests/                        # Test suite
+├── .env                          # Environment variables
+├── requirements.txt              # Python dependencies
+├── README.md                     # This file
+├── FIXES_APPLIED.md             # Bug fixes documentation
+└── test_fixes.py                # Automated test suite
 ```
 
-**Option B: CMD**
-```cmd
-setup_python313.bat
-```
+## 🚀 Quick Start
 
-### 3. Manual Installation
+### Prerequisites
+
+- Python 3.11+
+- Node.js 18+
+- API Keys: OpenAI, ElevenLabs, Deepgram (optional)
+
+### 1. Backend Setup
 
 ```bash
-# Verify Python 3.13 is installed
-py -3.13 --version
+cd backend/ai-shopify-agent
 
-# Remove old virtual environment (if exists)
-Remove-Item -Recurse -Force .venv
-
-# Create virtual environment with Python 3.13
-py -3.13 -m venv .venv
-
-# Activate (Windows PowerShell)
-.venv\Scripts\Activate.ps1
-
-# Activate (Windows CMD)
-.venv\Scripts\activate.bat
-
-# Upgrade pip
-python -m pip install --upgrade pip
+# Create virtual environment
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+# source .venv/bin/activate  # Linux/Mac
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Configure environment
+# Edit .env with your API keys
+
+# Run tests
+python test_fixes.py
+
+# Start server
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 3. Configuration
+### 2. Frontend Setup
 
-Copy `.env` and fill in your credentials:
+```bash
+cd backend/ai-shopify-agent/client
 
-```env
+# Install dependencies
+npm install
+
+# Start dev server
+npm run dev
+
+# Open browser to http://localhost:3000
+```
+
+## 🔧 Configuration
+
+### Required Environment Variables
+
+```bash
+# OpenAI (LLM)
 OPENAI_API_KEY=sk-...
-SHOPIFY_API_KEY=...
-SHOPIFY_API_SECRET=...
-SHOPIFY_SHOP_URL=your-store.myshopify.com
-DATABASE_URL=postgresql://user:password@localhost/agent_db
+
+# ElevenLabs (TTS + optional STT)
 ELEVENLABS_API_KEY=...
+ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM
+
+# Deepgram (optional, better STT)
+DEEPGRAM_API_KEY=...
+STT_PROVIDER=deepgram  # or "elevenlabs"
 ```
 
-**Note on Certificate Warning:** ~~If you see a Windows SmartScreen warning during Python installation, see `CERTIFICATE_WARNING_INFO.md` for details. TL;DR: It's safe - click "More info" → "Run anyway".~~
-
-**Update:** Python 3.13.12 has proper Windows installers and no certificate issues!
-
-### 4. Database Setup
+### Optional Configuration
 
 ```bash
-# Initialize database tables
-python -m app.database.migrations
+# Shopify Integration
+SHOPIFY_ADMIN_ACCESS_TOKEN=...
+SHOPIFY_SHOP_URL=your-store.myshopify.com
+
+# VAD Tuning
+VAD_WEBM_THRESHOLD=1500        # Lower = more sensitive
+VAD_SILENCE_DURATION=0.65      # Seconds before speech ends
+
+# TTS Tuning
+TTS_MAX_BUFFER_CHARS=150       # Lower = faster, choppier
+TTS_SENTENCE_TIMEOUT=0.5       # Force flush timeout
 ```
 
-### 5. Run Tests
+## 📊 Architecture
+
+### Voice Pipeline Flow
+
+```
+Browser (MediaRecorder)
+    ↓ WebSocket (WebM/Opus audio)
+Backend WebSocket Handler
+    ↓ Audio chunks
+Voice Activity Detection (VAD)
+    ↓ Speech detected
+Speech-to-Text (Deepgram/ElevenLabs)
+    ↓ Transcript
+LLM Agent (OpenAI GPT-4)
+    ↓ Streaming tokens
+Text-to-Speech (ElevenLabs)
+    ↓ PCM audio chunks
+Browser (AudioContext playback)
+```
+
+## 🧪 Testing
+
+### Run Backend Tests
 
 ```bash
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=app tests/
+cd backend/ai-shopify-agent
+python test_fixes.py
 ```
 
-### 6. Start Server
+### Manual Testing
+
+1. Open `http://localhost:3000`
+2. Click "Connect"
+3. Click microphone button
+4. Speak for 2-3 seconds
+5. Click stop
+6. Verify: transcript → agent response → audio playback
+
+### Monitor Logs
 
 ```bash
-# Development mode
-python app/main.py
-
-# Production mode
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+tail -f backend/ai-shopify-agent/agent.log
 ```
 
-## Project Structure
+## 📈 Performance Targets
 
-```
-app/
-├── agent/          # LangGraph AI agent
-├── api/            # FastAPI routes
-├── database/       # SQLAlchemy models
-├── memory/         # Conversation memory
-├── services/       # Business logic
-├── tools/          # LangChain tools
-└── utils/          # Utilities
-```
+| Metric | Good | Warning | Bad |
+|--------|------|---------|-----|
+| STT Latency | < 800ms | < 2000ms | > 2000ms |
+| First LLM Token | < 1500ms | < 3000ms | > 3000ms |
+| First Audio (TTFR) | < 2000ms | < 4000ms | > 4000ms |
 
-## Known Issues
+## 📚 Documentation
 
-### Windows Path Length Error (ElevenLabs)
+- [FIXES_APPLIED.md](./FIXES_APPLIED.md) - Detailed bug fixes
+- [client/README.md](./client/README.md) - Frontend documentation
+- [client/INTEGRATION_COMPLETE.md](./client/INTEGRATION_COMPLETE.md) - Integration guide
 
-If you encounter path length errors on Windows:
+## 🔐 Security Notes
 
-1. Enable long paths in Windows:
-   - Run as Administrator: `New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force`
-   - Restart your computer
+**Development Mode** (current):
+- WebSocket uses `ws://` (unencrypted)
+- No authentication
+- CORS allows localhost
 
-2. Or install ElevenLabs separately:
-   ```bash
-   pip install elevenlabs --no-cache-dir
-   ```
+**Production Requirements**:
+- Use `wss://` (secure WebSocket)
+- Implement authentication/authorization
+- Restrict CORS to production domains
+- Use secrets manager for API keys
 
-3. Or use a shorter project path (e.g., `C:\Dev\Agent\`)
+## 📝 License
+
+MIT

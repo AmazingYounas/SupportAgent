@@ -1,0 +1,61 @@
+﻿.venv\Scripts\python : 
+INFO:     Started server 
+process [7400]
+At line:1 char:16
++ ... rt-Sleep 3; 
+.venv\Scripts\python -m 
+uvicorn app.main:app 
+--host 0.0.0 ...
++                 ~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo       
+       : NotSpecified:   
+  (INFO:     Started s   
+ erver process [7400]    
+:String) [], RemoteE    
+xception
+    + FullyQualifiedErro 
+   rId : NativeCommandE  
+  rror
+ 
+INFO:     Waiting for 
+application startup.
+2026-04-04 22:11:21,485 
+- 
+app.database.connection 
+- INFO - Database engine 
+created for: sqlite:///./
+agent_db_fallback.sqlite
+2026-04-04 22:11:21,487 
+- app.main - INFO - ظ£à 
+Database initialized 
+successfully
+2026-04-04 22:11:21,488 
+- app.main - INFO - ≡اأ 
+AI Agent Backend 
+Services started
+2026-04-04 22:11:21,488 
+- app.main - INFO - ≡اôإ 
+Logging to: agent.log
+2026-04-04 22:11:21,488 
+- app.main - INFO - ≡ا¤د 
+Debug mode: False
+INFO:     Application 
+startup complete.
+ERROR:    [Errno 10048] 
+error while attempting 
+to bind on address 
+('0.0.0.0', 8002): 
+[winerror 10048] only 
+one usage of each socket 
+address 
+(protocol/network 
+address/port) is 
+normally permitted
+INFO:     Waiting for 
+application shutdown.
+INFO:     Application 
+shutdown complete.
+Creating database tables...
+Database tables created successfully.

@@ -9,8 +9,6 @@ from app.config import settings
 from app.agent.state import ConversationState
 from app.agent.prompts import SYSTEM_PROMPT
 
-from app.tools.order_tools import CheckOrderStatusTool, CancelOrderTool
-from app.tools.product_tools import SearchProductsTool
 from app.tools.customer_tools import UpdateCustomerFactsTool, GetCustomerFactsTool
 from app.tools.handoff_tools import HumanHandoffTool
 
@@ -21,11 +19,8 @@ _MAX_ITERATIONS = 10
 
 
 def create_tools():
-    """Creates a fresh set of tool instances per agent to prevent concurrency issues."""
+    """Creates tools that work without Shopify. Order/product tools added on integration."""
     return [
-        CheckOrderStatusTool(),
-        CancelOrderTool(),
-        SearchProductsTool(),
         UpdateCustomerFactsTool(),
         GetCustomerFactsTool(),
         HumanHandoffTool(),
@@ -40,10 +35,10 @@ def create_llm_with_tools(tools):
     """
     return ChatOpenAI(
         model=settings.OPENAI_MODEL,
-        temperature=0.4,
+        temperature=settings.OPENAI_TEMPERATURE,
         api_key=settings.OPENAI_API_KEY,
-        timeout=30.0,
-        max_tokens=200,
+        timeout=settings.OPENAI_TIMEOUT,
+        max_tokens=settings.OPENAI_MAX_TOKENS,
         streaming=True,  # Enable token-level streaming so LangGraph emits on_chat_model_stream events.
     ).bind_tools(tools)
 

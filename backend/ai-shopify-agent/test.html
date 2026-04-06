@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voice Agent — Test Client</title>
+  <style>
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━ Reset & Base ━━━━━━━━━━━━━━━━━━━━━━━━ */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━ Header ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      /* Standard property first, then vendor prefix */
+      background-clip: text;
+      -webkit-background-clip: text;
+      background-image: linear-gradient(135deg, #60a5fa, #a78bfa);
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.35rem;
+    }
+
+    .subtitle {
+      color: #64748b;
+      font-size: 0.85rem;
+      margin-bottom: 2rem;
+    }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━ Cards ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 1rem;
+      padding: 1.25rem 1.5rem;
+      width: 100%;
+      max-width: 620px;
+      margin-bottom: 1rem;
+    }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━ Connection Row ━━━━━━━━━━━━━━━━━━━━━ */
+    .conn-inputs {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .field {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .field-label {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .field-input {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 0.5rem;
+      color: #e2e8f0;
+      padding: 0.45rem 0.65rem;
+      font-size: 0.85rem;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .field-input:focus { border-color: #60a5fa; }
+
+    .conn-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━ Buttons ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      padding: 0.6rem 1.25rem;
+      border-radius: 0.7rem;
+      border: none;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.12s, box-shadow 0.12s, background 0.15s, opacity 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    /* Connect / Disconnect */
+    .btn-connect {
+      background: linear-gradient(135deg, #3b82f6, #6366f1);
+      color: #fff;
+    }
+    .btn-connect:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.45);
+    }
+
+    .btn-disconnect {
+      background: #ef4444;
+      color: #fff;
+    }
+    .btn-disconnect:hover:not(:disabled) { background: #dc2626; }
+
+    /* Talk button — full width */
+    .btn-talk {
+      width: 100%;
+      padding: 0.9rem 1rem;
+      font-size: 1rem;
+      border-radius: 0.85rem;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+    }
+    .btn-talk:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 5px 18px rgba(16, 185, 129, 0.35);
+    }
+
+    /* State variants */
+    .btn-talk--recording {
+      background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+      animation: pulse-glow 1.8s ease-in-out infinite;
+    }
+    .btn-talk--processing {
+      background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+    }
+    .btn-talk--playing {
+      background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 6px rgba(239, 68, 68, 0.25); }
+      50%       { box-shadow: 0 0 22px rgba(239, 68, 68, 0.55); }
+    }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━ Status Bar ━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.45rem 0.75rem;
+      border-radius: 0.5rem;
+      background: rgba(0, 0, 0, 0.25);
+      font-size: 0.8rem;
+      color: #cbd5e1;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #475569;
+      flex-shrink: 0;
+    }
+
+    .status-dot--connecting  { background: #f59e0b; animation: blink 0.8s infinite; }
+    .status-dot--connected   { background: #10b981; }
+    .status-dot--recording   { background: #3b82f6; animation: blink 1s infinite; }
+    .status-dot--processing  { background: #f59e0b; animation: blink 0.5s infinite; }
+    .status-dot--playing     { background: #a78bfa; animation: blink 0.35s infinite; }
+    .status-dot--error       { background: #ef4444; }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.2; }
+    }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━ Chat Panel ━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .chat-label {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.6rem;
+    }
+
+    .chat {
+      max-height: 220px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      padding-right: 2px; /* prevent scrollbar overlap */
+    }
+
+    /* Custom scrollbar */
+    .chat::-webkit-scrollbar      { width: 4px; }
+    .chat::-webkit-scrollbar-track { background: transparent; }
+    .chat::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+    .msg {
+      padding: 0.45rem 0.75rem;
+      border-radius: 0.6rem;
+      font-size: 0.85rem;
+      max-width: 88%;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .msg--user   { background: #1e3a8a; align-self: flex-end; }
+    .msg--agent  { background: #064e3b; align-self: flex-start; }
+    .msg--system { background: rgba(255,255,255,0.05); color: #94a3b8; font-size: 0.75rem; align-self: center; font-style: italic; }
+    .msg--error  { background: rgba(239,68,68,0.18); color: #fca5a5; align-self: center; font-size: 0.8rem; }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━ Log Panel ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    .log-toggle {
+      font-size: 0.72rem;
+      color: #64748b;
+      cursor: pointer;
+      -webkit-user-select: none;
+      user-select: none;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .log-toggle:hover { color: #94a3b8; }
+
+    .log-box {
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 0.5rem;
+      padding: 0.5rem 0.6rem;
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      font-size: 0.68rem;
+      color: #94a3b8;
+      height: 180px;
+      overflow-y: auto;
+      line-height: 1.55;
+    }
+    .log-box::-webkit-scrollbar      { width: 4px; }
+    .log-box::-webkit-scrollbar-track { background: transparent; }
+    .log-box::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+
+    .log-line         { padding: 1px 0; }
+    .log-line--error  { color: #f87171; }
+    .log-line--ok     { color: #34d399; }
+    .log-line--warn   { color: #fbbf24; }
+  </style>
+</head>
+<body>
+  <h1>🎙 Voice Agent</h1>
+  <p class="subtitle">Real-time duplex voice test client</p>
+
+  <!-- ── Connection Card ───────────────────────────────────────────── -->
+  <div class="card" id="connCard">
+    <div class="conn-inputs">
+      <div class="field">
+        <label class="field-label" for="host">Backend Host</label>
+        <input
+          id="host"
+          class="field-input"
+          type="text"
+          title="Backend host and port, e.g. localhost:8000"
+          placeholder="localhost:8000"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+      <div class="field">
+        <label class="field-label" for="sessionId">Session ID</label>
+        <input
+          id="sessionId"
+          class="field-input"
+          type="text"
+          title="Unique session identifier"
+          placeholder="session-..."
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+    </div>
+    <div class="conn-row">
+      <button id="connectBtn" class="btn btn-connect" onclick="toggleConnect()">
+        🔌&nbsp;Connect
+      </button>
+      <div class="status-bar" aria-live="polite" aria-label="Connection status">
+        <span id="statusDot" class="status-dot" aria-hidden="true"></span>
+        <span id="statusText">Disconnected</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Talk Card ───────────────────────────────────────────────────── -->
+  <div class="card" id="talkCard">
+    <button
+      id="talkBtn"
+      class="btn btn-talk"
+      onclick="toggleTalk()"
+      disabled
+      aria-label="Push to talk"
+    >
+      🎤&nbsp;Talk to Agent
+    </button>
+  </div>
+
+  <!-- ── Chat Card ────────────────────────────────────────────────────── -->
+  <div class="card" id="chatCard">
+    <p class="chat-label">Conversation</p>
+    <div id="chat" class="chat" role="log" aria-live="polite">
+      <div class="msg msg--system">Not connected — click Connect to begin</div>
+    </div>
+  </div>
+
+  <!-- ── Log Card ─────────────────────────────────────────────────────── -->
+  <div class="card" id="logCard">
+    <div class="log-toggle" id="logToggle" onclick="toggleLogs()" role="button" tabindex="0" aria-expanded="true" aria-controls="logBox">
+      <span>📋</span>
+      <span id="logToggleLabel">Debug Logs — click to hide</span>
+    </div>
+    <div id="logBox" class="log-box" role="log" aria-label="Debug log"></div>
+  </div>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════════════════════════════
+// Constants
+// ════════════════════════════════════════════════════════════════════
+
+const PCM_CAPTURE_RATE  = 16000;   // Client → Server: PCM Int16 LE 16 kHz
+const PCM_PLAYBACK_RATE = 24000;   // Server → Client: PCM Int16 LE 24 kHz
+const CAPTURE_BUFFER_SIZE = 4096;  // ScriptProcessor buffer (samples @ hardware rate)
+const PLAYBACK_FLUSH_MS = 80;      // Max wait before flushing audio accumulation buffer
+const PLAYBACK_FLUSH_SAMPLES = PCM_PLAYBACK_RATE * 0.75; // ~0.75 s accumulation target
+const MAX_PLAYBACK_LATENCY_S = 3.0; // Drop chunks if >3 s of audio already scheduled
+const LOG_MAX_LINES = 500;
+
+// ════════════════════════════════════════════════════════════════════
+// State
+// ════════════════════════════════════════════════════════════════════
+
+let ws = null;
+
+// 'disconnected' | 'connecting' | 'connected' | 'recording' | 'processing' | 'playing'
+let appStatus = 'disconnected';
+
+// Capture
+let mediaStream   = null;
+let captureCtx    = null;  // AudioContext for mic capture & downsampling
+let captureSource = null;
+let captureProc   = null;  // ScriptProcessorNode
+
+// Playback
+let playbackCtx   = null;  // AudioContext for PCM playback — reused across turns
+let nextPlayTime  = 0;
+let activeSources = [];
+let remainderByte = null;
+let pendingPCM    = [];    // Float32Array accumulation buffer
+let pendingPCMLen = 0;
+let flushTimer    = null;
+
+// Heartbeat
+let heartbeatTimer = null;
+
+// Agent transcript accumulation
+let agentTextBuffer = '';
+
+// Log visibility
+let logsVisible = true;
+
+// ════════════════════════════════════════════════════════════════════
+// Bootstrap
+// ════════════════════════════════════════════════════════════════════
+
+(function init() {
+  // Default session ID
+  document.getElementById('sessionId').value = 'dbg-' + Date.now();
+
+  // Default host: if served from the backend itself, reuse its origin.
+  // Otherwise fall back to localhost:8000.
+  const serverHost = (location.hostname && location.port)
+    ? `${location.hostname}:${location.port}`
+    : 'localhost:8000';
+  document.getElementById('host').value = serverHost;
+
+  // Allow the log toggle keyboard shortcut
+  document.getElementById('logToggle').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleLogs(); }
+  });
+})();
+
+// ════════════════════════════════════════════════════════════════════
+// Logging
+// ════════════════════════════════════════════════════════════════════
+
+function log(msg, level = 'info') {
+  const box = document.getElementById('logBox');
+  // Enforce max log lines
+  while (box.children.length >= LOG_MAX_LINES) box.removeChild(box.firstChild);
+
+  const time = new Date().toLocaleTimeString('en-US', {
+    hour12: false,
+    fractionalSecondDigits: 1,
+  });
+  const el = document.createElement('div');
+  el.className = 'log-line' +
+    (level === 'error' ? ' log-line--error' :
+     level === 'ok'    ? ' log-line--ok'    :
+     level === 'warn'  ? ' log-line--warn'  : '');
+  el.textContent = `${time}  ${msg}`;
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+
+  // Mirror to console
+  if      (level === 'error') console.error('[VA]', msg);
+  else if (level === 'warn')  console.warn('[VA]', msg);
+  else                        console.log('[VA]', msg);
+}
+
+function toggleLogs() {
+  logsVisible = !logsVisible;
+  const box   = document.getElementById('logBox');
+  const label = document.getElementById('logToggleLabel');
+  const btn   = document.getElementById('logToggle');
+  box.style.display        = logsVisible ? '' : 'none';
+  label.textContent        = logsVisible ? 'Debug Logs — click to hide' : 'Debug Logs — click to show';
+  btn.setAttribute('aria-expanded', logsVisible ? 'true' : 'false');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// UI Status
+// ════════════════════════════════════════════════════════════════════
+
+const STATUS_LABELS = {
+  disconnected : 'Disconnected',
+  connecting   : 'Connecting…',
+  connected    : 'Connected',
+  recording    : 'Listening…',
+  processing   : 'Processing…',
+  playing      : 'Agent Speaking',
+  error        : 'Error',
+};
+
+function setStatus(s) {
+  appStatus = s;
+  const dot  = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  dot.className  = 'status-dot status-dot--' + s;
+  text.textContent = STATUS_LABELS[s] || s;
+
+  const talkBtn    = document.getElementById('talkBtn');
+  const connectBtn = document.getElementById('connectBtn');
+
+  const offline = s === 'disconnected' || s === 'error';
+
+  // Connect/Disconnect button
+  if (offline || s === 'connecting') {
+    connectBtn.className   = 'btn btn-connect';
+    connectBtn.innerHTML   = s === 'connecting' ? '⏳&nbsp;Connecting…' : '🔌&nbsp;Connect';
+    connectBtn.disabled    = s === 'connecting';
+  } else {
+    connectBtn.className   = 'btn btn-disconnect';
+    connectBtn.innerHTML   = '🔌&nbsp;Disconnect';
+    connectBtn.disabled    = false;
+  }
+
+  // Talk button state and class
+  talkBtn.disabled = offline || s === 'connecting';
+  talkBtn.className = 'btn btn-talk';  // reset
+
+  switch (s) {
+    case 'recording':
+      talkBtn.className += ' btn-talk--recording';
+      talkBtn.innerHTML  = '⏹&nbsp;Stop Talking';
+      talkBtn.setAttribute('aria-label', 'Stop talking');
+      break;
+    case 'processing':
+      talkBtn.className += ' btn-talk--processing';
+      talkBtn.innerHTML  = '⏳&nbsp;Processing…';
+      talkBtn.setAttribute('aria-label', 'Processing, click to interrupt');
+      break;
+    case 'playing':
+      talkBtn.className += ' btn-talk--playing';
+      talkBtn.innerHTML  = '🔊&nbsp;Speaking — click to interrupt';
+      talkBtn.setAttribute('aria-label', 'Agent speaking, click to interrupt');
+      break;
+    default:
+      talkBtn.innerHTML = '🎤&nbsp;Talk to Agent';
+      talkBtn.setAttribute('aria-label', 'Push to talk');
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Chat
+// ════════════════════════════════════════════════════════════════════
+
+function addChat(type, text) {
+  const chat = document.getElementById('chat');
+  // For user/agent, update the in-progress bubble rather than appending duplicates
+  const existing = (type === 'user' || type === 'agent')
+    ? chat.querySelector(`[data-active="${type}"]`) : null;
+
+  if (existing) {
+    existing.textContent = text;
+  } else {
+    const div = document.createElement('div');
+    div.className = 'msg msg--' + type;
+    div.textContent = text;
+    if (type === 'user' || type === 'agent') {
+      div.setAttribute('data-active', type);
+    }
+    chat.appendChild(div);
+  }
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function finalizeChat(type) {
+  const el = document.getElementById('chat').querySelector(`[data-active="${type}"]`);
+  if (el) el.removeAttribute('data-active');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// WebSocket Connection
+// ════════════════════════════════════════════════════════════════════
+
+function toggleConnect() {
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+    disconnect();
+  } else {
+    connect();
+  }
+}
+
+function connect() {
+  const host      = document.getElementById('host').value.trim();
+  const sessionId = document.getElementById('sessionId').value.trim();
+
+  if (!host || !sessionId) {
+    log('Host and Session ID are required.', 'error');
+    return;
+  }
+
+  // Set 'connecting' BEFORE the WebSocket constructor — shows interim state
+  setStatus('connecting');
+
+  const proto = (location.protocol === 'https:' || host.startsWith('wss://')) ? 'wss' : 'ws';
+  // Strip any existing protocol prefix the user may have typed
+  const cleanHost = host.replace(/^wss?:\/\//, '');
+  const url = `${proto}://${cleanHost}/ws/voice/duplex/${encodeURIComponent(sessionId)}`;
+
+  log(`Connecting → ${url}`);
+
+  try {
+    ws = new WebSocket(url);
+    ws.binaryType = 'arraybuffer';
+  } catch (err) {
+    log(`WebSocket init failed: ${err.message}`, 'error');
+    setStatus('error');
+    ws = null;
+    return;
+  }
+
+  ws.onopen = () => {
+    log('WebSocket connected', 'ok');
+    setStatus('connected');
+    addChat('system', 'Connected — say something to start');
+    startHeartbeat();
+  };
+
+  ws.onclose = (ev) => {
+    const reason = ev.reason ? ` "${ev.reason}"` : '';
+    log(`WebSocket closed — code ${ev.code}${reason}`, ev.wasClean ? 'warn' : 'error');
+    _fullCleanup();
+    setStatus('disconnected');
+    ws = null;
+  };
+
+  ws.onerror = () => {
+    // onerror fires before onclose; actual disconnect is handled there
+    log('WebSocket error — check if backend is running on the correct port', 'error');
+    // Don't set 'error' status here; onclose will fire next and we'll use 'disconnected'
+  };
+
+  ws.onmessage = (event) => {
+    if (event.data instanceof ArrayBuffer) {
+      handleAudioChunk(event.data);
+    } else if (typeof event.data === 'string') {
+      handleTextMessage(event.data);
+    }
+  };
+}
+
+function disconnect() {
+  stopRecording(false);
+  stopPlayback();
+  stopHeartbeat();
+  if (ws) {
+    ws.close(1000, 'User disconnected');
+    ws = null;
+  }
+  setStatus('disconnected');
+  log('Disconnected by user');
+}
+
+/** Full cleanup called on unexpected close */
+function _fullCleanup() {
+  stopRecording(false);
+  stopPlayback();
+  stopHeartbeat();
+}
+
+// ───────────────────── Heartbeat ─────────────────────────────────
+
+function startHeartbeat() {
+  stopHeartbeat();
+  heartbeatTimer = setInterval(() => {
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send('PING');
+  }, 28_000);
+}
+
+function stopHeartbeat() {
+  if (heartbeatTimer !== null) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Incoming Message Handling
+// ════════════════════════════════════════════════════════════════════
+
+function handleTextMessage(raw) {
+  // Backend heartbeat reply
+  if (raw === 'PONG') return;
+
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    log(`Non-JSON message: ${raw.slice(0, 120)}`, 'warn');
+    return;
+  }
+
+  // ── Transcript (STT partial / final) ──────────────────────────────
+  if (data.type === 'transcript') {
+    const text = (data.text || '').trim();
+    if (!text) return;
+
+    addChat('user', text);
+
+    if (data.is_final) {
+      log(`STT final: "${text.slice(0, 80)}"`, 'ok');
+      finalizeChat('user');
+      // Reset agent accumulation for new turn
+      agentTextBuffer = '';
+    } else {
+      log(`STT partial: "${text.slice(0, 50)}"`);
+    }
+    return;
+  }
+
+  // ── Events ────────────────────────────────────────────────────────
+  if (data.type === 'event') {
+    switch (data.name) {
+      case 'speech_start':
+        log('VAD: speech detected');
+        if (appStatus !== 'recording') setStatus('recording');
+        break;
+
+      case 'speech_end':
+        log('VAD: speech ended → waiting for STT + LLM');
+        setStatus('processing');
+        break;
+
+      case 'ai_start':
+        log('LLM: generating response…');
+        // Pre-create agent bubble so first chunk has somewhere to go
+        agentTextBuffer = '';
+        addChat('agent', '…');
+        break;
+
+      case 'ai_chunk':
+        if (data.text) {
+          agentTextBuffer += data.text;
+          addChat('agent', agentTextBuffer);
+        } else {
+          if (appStatus === 'processing' || appStatus === 'connected') {
+            setStatus('playing');
+          }
+        }
+        break;
+
+      case 'ai_end':
+        log('Agent response complete', 'ok');
+        finalizeChat('agent');
+        // NOTE: Do NOT call stopPlayback() here — audio chunks may still be
+        // in-flight and buffered. The AudioContext naturallydrains.
+        // Only update status if we were still in a processing/playing state.
+        if (appStatus === 'processing' || appStatus === 'playing') {
+          setStatus('connected');
+        }
+        break;
+
+      case 'interrupted':
+        log('Pipeline interrupted', 'warn');
+        finalizeChat('agent');
+        addChat('system', '— interrupted —');
+        stopPlayback();
+        if (appStatus !== 'recording') setStatus('connected');
+        break;
+
+      case 'no_speech':
+        log('No speech detected by STT', 'warn');
+        addChat('system', 'No speech — please try again');
+        if (appStatus === 'processing') setStatus('connected');
+        break;
+
+      case 'error': {
+        const msg = data.message || data.detail || 'Unknown backend error';
+        log(`Backend error: ${msg}`, 'error');
+        addChat('error', msg);
+        if (appStatus !== 'recording') setStatus('connected');
+        break;
+      }
+
+      default:
+        log(`Unknown event: ${data.name}`);
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Audio Capture  (PCM Int16 LE, 16 kHz, mono)
+// ════════════════════════════════════════════════════════════════════
+
+function toggleTalk() {
+  if (appStatus === 'playing' || appStatus === 'processing') {
+    // Interrupt the pipeline
+    sendWS('INTERRUPT');
+    stopPlayback();
+    // Keep recording state as-is; don't stop the mic abruptly
+    if (appStatus !== 'recording') setStatus('connected');
+    log('INTERRUPT sent');
+    return;
+  }
+
+  if (appStatus === 'recording') {
+    stopRecording(true);
+    return;
+  }
+
+  if (appStatus === 'connected') {
+    startRecording();
+  }
+}
+
+async function startRecording() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    log('Cannot start — WebSocket not connected', 'error');
+    return;
+  }
+
+  // Request microphone at the browser's native rate; we'll downsample manually
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation   : true,
+        noiseSuppression   : true,
+        autoGainControl    : true,
+        channelCount       : 1,
+        // NOTE: sampleRate hint is advisory — browsers may ignore it and
+        // return their hardware rate (commonly 48 000 Hz). We read the
+        // actual rate from captureCtx.sampleRate after construction.
+      },
+      video: false,
+    });
+  } catch (err) {
+    const denied = err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError';
+    const msg = denied
+      ? 'Microphone access denied — allow it in browser settings'
+      : `Mic error: ${err.message}`;
+    log(msg, 'error');
+    addChat('error', msg);
+    return;
+  }
+
+  mediaStream = stream;
+
+  // Build capture graph
+  // Create at default rate; actual hardware rate will be in .sampleRate
+  captureCtx    = new AudioContext();
+  const hwRate  = captureCtx.sampleRate;  // e.g. 48 000
+
+  captureSource = captureCtx.createMediaStreamSource(stream);
+  captureProc   = captureCtx.createScriptProcessor(CAPTURE_BUFFER_SIZE, 1, 1);
+
+  // Silent gain node — required to keep Chrome's processor alive
+  const silentGain = captureCtx.createGain();
+  silentGain.gain.value = 0;
+  captureProc.connect(silentGain);
+  silentGain.connect(captureCtx.destination);
+
+  let chunkSeq = 0;
+
+  captureProc.onaudioprocess = (ev) => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+    // 1. Grab float32 samples at hardware rate
+    const float32 = ev.inputBuffer.getChannelData(0);
+
+    // 2. Downsample to PCM_CAPTURE_RATE using linear interpolation (avoids
+    //    the aliasing artefacts of nearest-neighbour)
+    const pcm16 = downsampleLinear(float32, hwRate, PCM_CAPTURE_RATE);
+
+    // 3. Send raw Int16 LE binary frame
+    ws.send(pcm16.buffer);
+
+    chunkSeq++;
+    if (chunkSeq <= 3 || chunkSeq % 100 === 0) {
+      log(`PCM chunk #${chunkSeq}: ${pcm16.buffer.byteLength}B (hw:${hwRate}→${PCM_CAPTURE_RATE}Hz)`);
+    }
+  };
+
+  captureSource.connect(captureProc);
+
+  setStatus('recording');
+  log(`Mic recording — hw rate: ${hwRate} Hz → downsampled to ${PCM_CAPTURE_RATE} Hz`, 'ok');
+}
+
+function stopRecording(sendEOS = true) {
+  const wasRecording = appStatus === 'recording';
+
+  // Tear down Web Audio capture graph first
+  if (captureProc)   { captureProc.onaudioprocess = null; captureProc.disconnect(); captureProc = null; }
+  if (captureSource) { captureSource.disconnect(); captureSource = null; }
+  if (captureCtx && captureCtx.state !== 'closed') {
+    captureCtx.close().catch(() => {});
+    captureCtx = null;
+  }
+  if (mediaStream)   { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+
+  if (sendEOS && ws && ws.readyState === WebSocket.OPEN) {
+    sendWS('END_OF_SPEECH');
+    // Only move to processing if we were actually recording; avoid
+    // overriding 'playing' or 'connected' if called from a non-recording state.
+    if (wasRecording) setStatus('processing');
+    log('END_OF_SPEECH sent');
+  } else if (wasRecording) {
+    // Not sending EOS (interrupt/disconnect) — return to idle
+    setStatus('connected');
+  }
+  // If status was already something else (processing/playing), leave it untouched.
+}
+
+/**
+ * Linear interpolation downsample: avoids aliasing & clicks at chunk boundaries.
+ * Returns a new Int16Array ready to send as PCM LE.
+ */
+function downsampleLinear(float32, fromRate, toRate) {
+  if (fromRate === toRate) {
+    return floatToInt16(float32);
+  }
+
+  const ratio   = fromRate / toRate;
+  const outLen  = Math.floor(float32.length / ratio);
+  const out     = new Int16Array(outLen);
+
+  for (let i = 0; i < outLen; i++) {
+    const pos  = i * ratio;
+    const i0   = Math.floor(pos);
+    const i1   = Math.min(i0 + 1, float32.length - 1);
+    const frac = pos - i0;
+    const s    = float32[i0] * (1 - frac) + float32[i1] * frac;
+    const c    = Math.max(-1, Math.min(1, s));
+    out[i] = c < 0 ? (c * 0x8000) | 0 : (c * 0x7FFF) | 0;
+  }
+  return out;
+}
+
+function floatToInt16(float32) {
+  const out = new Int16Array(float32.length);
+  for (let i = 0; i < float32.length; i++) {
+    const c = Math.max(-1, Math.min(1, float32[i]));
+    out[i] = c < 0 ? (c * 0x8000) | 0 : (c * 0x7FFF) | 0;
+  }
+  return out;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Audio Playback  (PCM Int16 LE, 24 kHz, mono)
+// ════════════════════════════════════════════════════════════════════
+
+/**
+ * Ensures playbackCtx exists and is running.
+ * We reuse the same context across turns (never destroy it mid-session) to
+ * avoid the browser's limit on concurrent AudioContext instances and to
+ * prevent clicking between turns.
+ */
+function ensurePlaybackCtx() {
+  if (!playbackCtx || playbackCtx.state === 'closed') {
+    playbackCtx = new AudioContext();
+    nextPlayTime = 0;
+  }
+  if (playbackCtx.state === 'suspended') {
+    playbackCtx.resume().catch(() => {});
+  }
+  return playbackCtx;
+}
+
+function handleAudioChunk(buffer) {
+  if (buffer.byteLength === 0) return;
+
+  // Update status to 'playing' as soon as first audio arrives
+  if (appStatus === 'processing' || appStatus === 'connected') {
+    setStatus('playing');
+  }
+
+  // ── Byte-alignment correction ────────────────────────────────────
+  // PCM is Int16 LE = 2 bytes/sample. Network frames can arrive with
+  // odd byte counts. We save any orphaned byte and prepend it next chunk.
+  const inView = new Uint8Array(buffer);
+  let buf;
+  if (remainderByte !== null) {
+    buf = new Uint8Array(1 + inView.length);
+    buf[0] = remainderByte;
+    buf.set(inView, 1);
+  } else {
+    buf = inView;
+  }
+  remainderByte = (buf.length % 2 === 1) ? buf[buf.length - 1] : null;
+
+  const sampleCount = Math.floor(buf.length / 2);
+  if (sampleCount === 0) return;
+
+  // ── PCM Int16 LE → Float32 ───────────────────────────────────────
+  const samples = new Float32Array(sampleCount);
+  for (let i = 0; i < sampleCount; i++) {
+    let s = (buf[i * 2 + 1] << 8) | buf[i * 2];
+    if (s >= 0x8000) s -= 0x10000;    // sign-extend
+    samples[i] = s / 32768.0;
+  }
+
+  // Accumulate to reduce per-chunk resampler artefacts
+  pendingPCM.push(samples);
+  pendingPCMLen += samples.length;
+
+  if (pendingPCMLen >= PLAYBACK_FLUSH_SAMPLES) {
+    _flushAudio();
+  } else {
+    if (flushTimer !== null) clearTimeout(flushTimer);
+    flushTimer = setTimeout(_flushAudio, PLAYBACK_FLUSH_MS);
+  }
+}
+
+function _flushAudio() {
+  if (flushTimer !== null) { clearTimeout(flushTimer); flushTimer = null; }
+  if (pendingPCMLen === 0) return;
+
+  const ctx = ensurePlaybackCtx();
+
+  // Merge accumulated chunks into a single Float32Array
+  const combined = new Float32Array(pendingPCMLen);
+  let offset = 0;
+  for (const chunk of pendingPCM) {
+    combined.set(chunk, offset);
+    offset += chunk.length;
+  }
+  pendingPCM    = [];
+  pendingPCMLen = 0;
+
+  // Schedule via Web Audio API (gapless chaining)
+  const audioBuf = ctx.createBuffer(1, combined.length, PCM_PLAYBACK_RATE);
+  audioBuf.getChannelData(0).set(combined);
+
+  const src = ctx.createBufferSource();
+  src.buffer = audioBuf;
+  src.connect(ctx.destination);
+
+  const now     = ctx.currentTime;
+  const startAt = nextPlayTime > now ? nextPlayTime : now + 0.005;
+  src.start(startAt);
+  nextPlayTime = startAt + audioBuf.duration;
+
+  activeSources.push(src);
+  src.onended = () => {
+    const idx = activeSources.indexOf(src);
+    if (idx !== -1) activeSources.splice(idx, 1);
+    // When all sources have drained and we were 'playing', move to 'connected'
+    if (activeSources.length === 0 && pendingPCMLen === 0 && appStatus === 'playing') {
+      setStatus('connected');
+    }
+  };
+}
+
+/**
+ * Force-stop all buffered audio immediately (for interrupt / disconnect).
+ */
+function stopPlayback() {
+  if (flushTimer !== null) { clearTimeout(flushTimer); flushTimer = null; }
+  for (const src of activeSources) {
+    try { src.stop(); } catch (_) { /* already ended */ }
+  }
+  activeSources = [];
+  pendingPCM    = [];
+  pendingPCMLen = 0;
+  nextPlayTime  = 0;
+  remainderByte = null;
+  // Note: we intentionally do NOT close playbackCtx here — it is reused
+  // across turns to avoid limits on AudioContext creation.
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Helpers
+// ════════════════════════════════════════════════════════════════════
+
+function sendWS(msg) {
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(msg);
+}
+</script>
+</body>
+</html>

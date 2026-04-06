@@ -32,6 +32,18 @@ class SessionMemory:
 
     def add_ai_message(self, content: str):
         self._messages.append(AIMessage(content=content))
+
+    def remove_last_user_message(self, content: str | None = None) -> None:
+        """
+        Remove the most recent user message if present.
+        If `content` is provided, only remove when content matches exactly.
+        """
+        for idx in range(len(self._messages) - 1, -1, -1):
+            msg = self._messages[idx]
+            if isinstance(msg, HumanMessage):
+                if content is None or msg.content == content:
+                    self._messages.pop(idx)
+                return
         
     def add_raw_message(self, message: BaseMessage):
         """

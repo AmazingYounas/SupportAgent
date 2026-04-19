@@ -15,7 +15,7 @@ import asyncio
 import logging
 import time
 from enum import Enum, auto
-from typing import Callable, Awaitable
+from typing import Callable, Awaitable, Optional
 
 from app.config import settings
 from app.voice.audio_utils import compute_audio_activity, WEBM_MAGIC
@@ -59,8 +59,8 @@ class VAD:
         self._state = VADState.IDLE
         self._speech_buffer: list[bytes] = []
         self._speech_start_ts: float = 0.0
-        self._silence_task: asyncio.Task | None = None
-        self._webm_header: bytes | None = None
+        self._silence_task: Optional[asyncio.Task] = None
+        self._webm_header: Optional[bytes] = None
 
     async def feed(self, chunk: bytes) -> None:
         """
@@ -76,9 +76,9 @@ class VAD:
 
         is_active, metadata = compute_audio_activity(chunk)
         
-        # Log activity with format-specific details (INFO level for debugging)
+        # Log activity with format-specific details (DEBUG level to keep terminal clean)
         if metadata["method"] == "energy":
-            logger.info(
+            logger.debug(
                 f"[VAD] 🎵 {metadata['size']}b | "
                 f"energy={metadata['energy']:.0f} | "
                 f"state={self._state.name} | "
@@ -86,7 +86,7 @@ class VAD:
                 f"threshold={settings.VAD_SPEECH_THRESHOLD}"
             )
         else:
-            logger.info(
+            logger.debug(
                 f"[VAD] 🎵 {metadata['size']}b | "
                 f"format={metadata['format']} | "
                 f"state={self._state.name} | "

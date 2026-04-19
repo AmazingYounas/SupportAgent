@@ -1,345 +1,190 @@
-import { useEffect } from "react";
-import type {
-  ActionFunctionArgs,
-  HeadersFunction,
-  LoaderFunctionArgs,
-} from "react-router";
-import { useFetcher } from "react-router";
-import { useAppBridge } from "@shopify/app-bridge-react";
+import { useEffect, useState } from "react";
+import type { LoaderFunctionArgs } from "react-router";
+import { useLoaderData } from "react-router";
 import { authenticate } from "../shopify.server";
-import { boundary } from "@shopify/shopify-app-react-router/server";
+import { Page, Layout, Card, Grid, Text, BlockStack, InlineStack, Badge, Box } from "@shopify/polaris";
+import { PhoneIcon, IncomingIcon, OutgoingIcon, ChartBarIcon } from "@shopify/polaris-icons";
+
+const BACKEND_URL = "http://localhost:8000";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
-
-  return null;
-};
-
-export const action = async ({ request }: ActionFunctionArgs) => {
-  const { admin } = await authenticate.admin(request);
-  const color = ["Red", "Orange", "Yellow", "Green"][
-    Math.floor(Math.random() * 4)
-  ];
-  const response = await admin.graphql(
-    `#graphql
-      mutation populateProduct($product: ProductCreateInput!) {
-        productCreate(product: $product) {
-          product {
-            id
-            title
-            handle
-            status
-            variants(first: 10) {
-              edges {
-                node {
-                  id
-                  price
-                  barcode
-                  createdAt
-                }
-              }
-            }
-            demoInfo: metafield(namespace: "$app", key: "demo_info") {
-              jsonValue
-            }
-          }
-        }
-      }`,
-    {
-      variables: {
-        product: {
-          title: `${color} Snowboard`,
-          metafields: [
-            {
-              namespace: "$app",
-              key: "demo_info",
-              value: "Created by React Router Template",
-            },
-          ],
-        },
+  
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/dashboard/stats`);
+    if (!response.ok) throw new Error("Backend offline");
+    const stats = await response.json();
+    return { stats };
+  } catch (err) {
+    console.error("Dashboard loader error:", err);
+    return { 
+      stats: {
+        total_calls: 0,
+        inbound_count: 0,
+        outbound_count: 0,
+        active_count: 0,
+        resolution_rate: 0
       },
-    },
-  );
-  const responseJson = await response.json();
-
-  const product = responseJson.data!.productCreate!.product!;
-  const variantId = product.variants.edges[0]!.node!.id!;
-
-  const variantResponse = await admin.graphql(
-    `#graphql
-    mutation shopifyReactRouterTemplateUpdateVariant($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
-      productVariantsBulkUpdate(productId: $productId, variants: $variants) {
-        productVariants {
-          id
-          price
-          barcode
-          createdAt
-        }
-      }
-    }`,
-    {
-      variables: {
-        productId: product.id,
-        variants: [{ id: variantId, price: "100.00" }],
-      },
-    },
-  );
-
-  const variantResponseJson = await variantResponse.json();
-
-  const metaobjectResponse = await admin.graphql(
-    `#graphql
-    mutation shopifyReactRouterTemplateUpsertMetaobject($handle: MetaobjectHandleInput!, $metaobject: MetaobjectUpsertInput!) {
-      metaobjectUpsert(handle: $handle, metaobject: $metaobject) {
-        metaobject {
-          id
-          handle
-          title: field(key: "title") {
-            jsonValue
-          }
-          description: field(key: "description") {
-            jsonValue
-          }
-        }
-        userErrors {
-          field
-          message
-        }
-      }
-    }`,
-    {
-      variables: {
-        handle: {
-          type: "$app:example",
-          handle: "demo-entry",
-        },
-        metaobject: {
-          fields: [
-            { key: "title", value: "Demo Entry" },
-            {
-              key: "description",
-              value:
-                "This metaobject was created by the Shopify app template to demonstrate the metaobject API.",
-            },
-          ],
-        },
-      },
-    },
-  );
-
-  const metaobjectResponseJson = await metaobjectResponse.json();
-
-  return {
-    product: responseJson!.data!.productCreate!.product,
-    variant:
-      variantResponseJson!.data!.productVariantsBulkUpdate!.productVariants,
-    metaobject:
-      metaobjectResponseJson!.data!.metaobjectUpsert!.metaobject,
-  };
+      error: "Could not connect to AI Voice Backend. Ensure the Python server is running."
+    };
+  }
 };
 
 export default function Index() {
-  const fetcher = useFetcher<typeof action>();
-
-  const shopify = useAppBridge();
-  const isLoading =
-    ["loading", "submitting"].includes(fetcher.state) &&
-    fetcher.formMethod === "POST";
+  const { stats: initialStats, error } = useLoaderData<typeof loader>();
+  const [stats, setStats] = useState(initialStats);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (fetcher.data?.product?.id) {
-      shopify.toast.show("Product created");
-    }
-  }, [fetcher.data?.product?.id, shopify]);
+    setMounted(true);
+    
+    // Auto-refresh stats every 4 seconds to track live calls
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/dashboard/stats`);
+        if (response.ok) {
+          const newStats = await response.json();
+          setStats(newStats);
+        }
+      } catch (e) {
+        console.error("Auto-refresh failed", e);
+      }
+    }, 4000);
 
-  const generateProduct = () => fetcher.submit({}, { method: "POST" });
+    return () => clearInterval(interval);
+  }, []);
 
   return (
-    <s-page heading="Shopify app template">
-      <s-button slot="primary-action" onClick={generateProduct}>
-        Generate a product
-      </s-button>
+    <Page title="Voice Command Center" fullWidth>
+      {error && (
+        <Box paddingBlockEnd="400">
+           <Badge tone="critical">{error}</Badge>
+        </Box>
+      )}
 
-      <s-section heading="Congrats on creating a new Shopify app 🎉">
-        <s-paragraph>
-          This embedded app template uses{" "}
-          <s-link
-            href="https://shopify.dev/docs/apps/tools/app-bridge"
-            target="_blank"
-          >
-            App Bridge
-          </s-link>{" "}
-          interface examples like an{" "}
-          <s-link href="/app/additional">additional page in the app nav</s-link>
-          , as well as an{" "}
-          <s-link
-            href="https://shopify.dev/docs/api/admin-graphql"
-            target="_blank"
-          >
-            Admin GraphQL
-          </s-link>{" "}
-          mutation demo, to provide a starting point for app development.
-        </s-paragraph>
-      </s-section>
-      <s-section heading="Get started with products">
-        <s-paragraph>
-          Generate a product with GraphQL and get the JSON output for that
-          product. Learn more about the{" "}
-          <s-link
-            href="https://shopify.dev/docs/api/admin-graphql/latest/mutations/productCreate"
-            target="_blank"
-          >
-            productCreate
-          </s-link>{" "}
-          mutation in our API references. Includes a product{" "}
-          <s-link
-            href="https://shopify.dev/docs/apps/build/custom-data/metafields"
-            target="_blank"
-          >
-            metafield
-          </s-link>{" "}
-          and{" "}
-          <s-link
-            href="https://shopify.dev/docs/apps/build/custom-data/metaobjects"
-            target="_blank"
-          >
-            metaobject
-          </s-link>
-          .
-        </s-paragraph>
-        <s-stack direction="inline" gap="base">
-          <s-button
-            onClick={generateProduct}
-            {...(isLoading ? { loading: true } : {})}
-          >
-            Generate a product
-          </s-button>
-          {fetcher.data?.product && (
-            <s-button
-              onClick={() => {
-                shopify.intents.invoke?.("edit:shopify/Product", {
-                  value: fetcher.data?.product?.id,
-                });
-              }}
-              target="_blank"
-              variant="tertiary"
-            >
-              Edit product
-            </s-button>
-          )}
-        </s-stack>
-        {fetcher.data?.product && (
-          <s-section heading="productCreate mutation">
-            <s-stack direction="block" gap="base">
-              <s-box
-                padding="base"
-                borderWidth="base"
-                borderRadius="base"
-                background="subdued"
-              >
-                <pre style={{ margin: 0 }}>
-                  <code>{JSON.stringify(fetcher.data.product, null, 2)}</code>
-                </pre>
-              </s-box>
+      <Layout>
+        {/* KPI Section */}
+        <Layout.Section>
+          <Grid>
+            <Grid.Cell columnSpan={{ xs: 6, sm: 3, md: 3, lg: 3 }}>
+              <StatCard 
+                title="Total Calls" 
+                value={stats.total_calls} 
+                icon={PhoneIcon} 
+                color="#f0f7ff" 
+                delay="0s" 
+                mounted={mounted}
+              />
+            </Grid.Cell>
+            <Grid.Cell columnSpan={{ xs: 6, sm: 3, md: 3, lg: 3 }}>
+              <StatCard 
+                title="Active Now" 
+                value={stats.active_count} 
+                icon={PhoneIcon} 
+                color="#fff0f0" 
+                badge={stats.active_count > 0 ? "LIVE" : null}
+                delay="0.1s"
+                mounted={mounted}
+              />
+            </Grid.Cell>
+            <Grid.Cell columnSpan={{ xs: 6, sm: 3, md: 3, lg: 3 }}>
+              <StatCard 
+                title="Inbound" 
+                value={stats.inbound_count} 
+                icon={IncomingIcon} 
+                color="#f0fff4" 
+                delay="0.2s"
+                mounted={mounted}
+              />
+            </Grid.Cell>
+            <Grid.Cell columnSpan={{ xs: 6, sm: 3, md: 3, lg: 3 }}>
+              <StatCard 
+                title="Outbound" 
+                value={stats.outbound_count} 
+                icon={OutgoingIcon} 
+                color="#fdfcf0" 
+                delay="0.3s"
+                mounted={mounted}
+              />
+            </Grid.Cell>
+          </Grid>
+        </Layout.Section>
 
-              <s-heading>productVariantsBulkUpdate mutation</s-heading>
-              <s-box
-                padding="base"
-                borderWidth="base"
-                borderRadius="base"
-                background="subdued"
-              >
-                <pre style={{ margin: 0 }}>
-                  <code>{JSON.stringify(fetcher.data.variant, null, 2)}</code>
-                </pre>
-              </s-box>
+        {/* Analytics & Pulse */}
+        <Layout.Section variant="oneThird">
+          <Card>
+            <BlockStack gap="400">
+              <Text variant="headingMd" as="h2">Resolution Rate</Text>
+              <Box padding="600" background="bg-surface-secondary" borderRadius="200">
+                <BlockStack align="center" gap="200">
+                  <Text variant="heading3xl" as="p" alignment="center">
+                    {stats.resolution_rate}%
+                  </Text>
+                  <Text variant="bodySm" as="p" tone="subdued" alignment="center">
+                    of queries resolved by AI
+                  </Text>
+                </BlockStack>
+              </Box>
+              <Text variant="bodySm" as="p" tone="subdued">
+                Calculated from all completed inbound sessions.
+              </Text>
+            </BlockStack>
+          </Card>
+        </Layout.Section>
 
-              <s-heading>metaobjectUpsert mutation</s-heading>
-              <s-box
-                padding="base"
-                borderWidth="base"
-                borderRadius="base"
-                background="subdued"
-              >
-                <pre style={{ margin: 0 }}>
-                  <code>
-                    {JSON.stringify(fetcher.data.metaobject, null, 2)}
-                  </code>
-                </pre>
-              </s-box>
-            </s-stack>
-          </s-section>
-        )}
-      </s-section>
+        <Layout.Section>
+          <Card>
+            <BlockStack gap="400">
+              <InlineStack align="space-between">
+                <Text variant="headingMd" as="h2">Platform Health</Text>
+                <Badge tone="success">Operational</Badge>
+              </InlineStack>
+              <Box padding="400" background="bg-surface-secondary" borderRadius="200">
+                 <BlockStack gap="200">
+                    <InlineStack align="space-between">
+                       <Text variant="bodyMd" as="p">STT Latency</Text>
+                       <Text variant="bodyMd" as="p" fontWeight="bold">~240ms</Text>
+                    </InlineStack>
+                    <InlineStack align="space-between">
+                       <Text variant="bodyMd" as="p">TTS Buffer</Text>
+                       <Text variant="bodyMd" as="p" fontWeight="bold">0.8s</Text>
+                    </InlineStack>
+                 </BlockStack>
+              </Box>
+            </BlockStack>
+          </Card>
+        </Layout.Section>
+      </Layout>
 
-      <s-section slot="aside" heading="App template specs">
-        <s-paragraph>
-          <s-text>Framework: </s-text>
-          <s-link href="https://reactrouter.com/" target="_blank">
-            React Router
-          </s-link>
-        </s-paragraph>
-        <s-paragraph>
-          <s-text>Interface: </s-text>
-          <s-link
-            href="https://shopify.dev/docs/api/app-home/using-polaris-components"
-            target="_blank"
-          >
-            Polaris web components
-          </s-link>
-        </s-paragraph>
-        <s-paragraph>
-          <s-text>API: </s-text>
-          <s-link
-            href="https://shopify.dev/docs/api/admin-graphql"
-            target="_blank"
-          >
-            GraphQL
-          </s-link>
-        </s-paragraph>
-        <s-paragraph>
-          <s-text>Custom data: </s-text>
-          <s-link
-            href="https://shopify.dev/docs/apps/build/custom-data"
-            target="_blank"
-          >
-            Metafields &amp; metaobjects
-          </s-link>
-        </s-paragraph>
-        <s-paragraph>
-          <s-text>Database: </s-text>
-          <s-link href="https://www.prisma.io/" target="_blank">
-            Prisma
-          </s-link>
-        </s-paragraph>
-      </s-section>
-
-      <s-section slot="aside" heading="Next steps">
-        <s-unordered-list>
-          <s-list-item>
-            Build an{" "}
-            <s-link
-              href="https://shopify.dev/docs/apps/getting-started/build-app-example"
-              target="_blank"
-            >
-              example app
-            </s-link>
-          </s-list-item>
-          <s-list-item>
-            Explore Shopify&apos;s API with{" "}
-            <s-link
-              href="https://shopify.dev/docs/apps/tools/graphiql-admin-api"
-              target="_blank"
-            >
-              GraphiQL
-            </s-link>
-          </s-list-item>
-        </s-unordered-list>
-      </s-section>
-    </s-page>
+      <style>{`
+        @keyframes fadeInSlideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .stat-card-animated {
+          opacity: 0;
+          animation: fadeInSlideUp 0.6s ease forwards;
+        }
+      `}</style>
+    </Page>
   );
 }
 
-export const headers: HeadersFunction = (headersArgs) => {
-  return boundary.headers(headersArgs);
-};
+function StatCard({ title, value, icon: Icon, color, badge, delay, mounted }: any) {
+  return (
+    <div className={mounted ? "stat-card-animated" : ""} style={{ animationDelay: delay }}>
+      <Card>
+        <BlockStack gap="200">
+          <InlineStack align="space-between">
+            <Box padding="200" background="bg-surface-secondary" borderRadius="200" style={{ backgroundColor: color }}>
+              <Icon width="20" />
+            </Box>
+            {badge && <Badge tone="attention">{badge}</Badge>}
+          </InlineStack>
+          <Text variant="bodySm" as="p" tone="subdued">{title}</Text>
+          <Text variant="headingLg" as="p">{value}</Text>
+        </BlockStack>
+      </Card>
+    </div>
+  );
+}

@@ -94,6 +94,7 @@ class SupportAgent:
         self,
         user_message: str,
         session_memory: SessionMemory,
+        caller_context: Optional[str] = None,
         customer_id: str = None,
         on_text_chunk: Optional[Callable[[str], Awaitable[None]]] = None,
     ) -> AsyncGenerator[bytes, None]:
@@ -107,7 +108,10 @@ class SupportAgent:
         fails or the caller cancels mid-stream.
         """
         if not session_memory.get_messages():
-            session_memory.set_system_prompt(SYSTEM_PROMPT)
+            system_prompt = SYSTEM_PROMPT
+            if caller_context:
+                system_prompt += f"\n\n--- CALLER CONTEXT ---\n{caller_context}\n"
+            session_memory.set_system_prompt(system_prompt)
 
         session_memory.add_user_message(user_message)
 

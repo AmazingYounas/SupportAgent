@@ -84,7 +84,7 @@ class ElevenLabsRealtimeSTT(STTProvider):
         }
         
         session = self._get_session()
-        transcript_queue: asyncio.Queue[dict | None] = asyncio.Queue(maxsize=10)
+        transcript_queue: asyncio.Queue[Optional[dict]] = asyncio.Queue(maxsize=10)
         
         try:
             async with session.ws_connect(

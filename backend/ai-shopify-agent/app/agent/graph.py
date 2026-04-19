@@ -3,6 +3,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
+from langchain_core.runnables import RunnableConfig
 import logging
 
 from app.config import settings
@@ -54,7 +55,7 @@ def create_agent_graph(tools, llm):
     Recursion is capped at _MAX_ITERATIONS to prevent runaway tool loops.
     """
 
-    async def reasoning_node(state: ConversationState):
+    async def reasoning_node(state: ConversationState, config: RunnableConfig):
         """Calls the LLM; returns tool calls or a final answer."""
         messages = state["messages"]
 
@@ -62,7 +63,7 @@ def create_agent_graph(tools, llm):
         if not isinstance(messages[0], SystemMessage):
             messages = [SystemMessage(content=SYSTEM_PROMPT)] + list(messages)
 
-        response = await llm.ainvoke(messages)
+        response = await llm.ainvoke(messages, config=config)
         return {"messages": [response]}
 
     def should_continue(state: ConversationState) -> Literal["tools", "__end__"]:

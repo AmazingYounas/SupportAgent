@@ -1,4 +1,4 @@
-from typing import TypedDict, Annotated, Sequence
+from typing import TypedDict, Annotated, Sequence, Optional
 import operator
 from langchain_core.messages import BaseMessage
 
@@ -12,5 +12,5 @@ class ConversationState(TypedDict):
     - active_order_id:  Shopify order currently in context, if any.
     """
     messages: Annotated[Sequence[BaseMessage], operator.add]
-    customer_id: str | None
-    active_order_id: str | None
+    customer_id: Optional[str]
+    active_order_id: Optional[str]

@@ -29,15 +29,27 @@ class ShopifyService:
     """
 
     def __init__(self):
-        self.shop_url = settings.SHOPIFY_SHOP_URL.strip("/")
+        self.shop_url = settings.SHOPIFY_SHOP_URL.strip("/") if settings.SHOPIFY_SHOP_URL else None
         self.api_version = settings.SHOPIFY_API_VERSION
         access_token = settings.SHOPIFY_ADMIN_ACCESS_TOKEN
-        # Shopify integration is optional — no warning when not configured.
+        
+        # 🚀 DYNAMIC CREDENTIAL DISCOVERY
+        # If credentials are missing in .env, attempt to load them from the Shopify App DB
+        if not self.shop_url or not access_token:
+            from app.services.shopify_credentials import get_shopify_creds
+            dynamic_shop, dynamic_token = get_shopify_creds()
+            if dynamic_shop and dynamic_token:
+                self.shop_url = dynamic_shop
+                access_token = dynamic_token
+                logger.debug(f"[Shopify] Using dynamically discovered credentials for {self.shop_url}")
+
+        # Shopify integration is optional — headers are only set if configured
         self.headers = {
             "Content-Type": "application/json",
             "X-Shopify-Access-Token": access_token,
-        }
-        self._configured = bool(access_token and settings.SHOPIFY_SHOP_URL)
+        } if access_token else {}
+        
+        self._configured = bool(access_token and self.shop_url)
 
     async def _make_request(
         self,
@@ -85,7 +97,15 @@ class ShopifyService:
 
                 content_type = response.headers.get("content-type", "")
                 if response.text and content_type.startswith("application/json"):
-                    return response.json()
+                    result = response.json()
+                    logger.info(f"[Shopify:API] ✅ {method} {endpoint} -> Success (Found {len(str(result))} bytes of JSON)")
+                    # Log a summary of the data keys for visibility
+                    if isinstance(result, dict):
+                        keys = list(result.keys())
+                        logger.debug(f"[Shopify:API] Response keys: {keys}")
+                    return result
+                
+                logger.info(f"[Shopify:API] ✅ {method} {endpoint} -> Success ({response.status_code})")
                 return {"status": "success", "status_code": response.status_code}
 
             except httpx.TimeoutException:
@@ -185,6 +205,14 @@ class ShopifyService:
 
     async def search_customer_by_email(self, email: str) -> Dict[str, Any]:
         return await self._make_request("GET", "/customers/search.json", params={"query": f"email:{email}"})
+
+    async def search_customer_by_phone(self, phone: str) -> Dict[str, Any]:
+        """Search for a customer by their phone number (exact match recommended)."""
+        return await self._make_request("GET", "/customers/search.json", params={"query": f"phone:{phone}"})
+
+    async def get_customer_orders(self, customer_id: str) -> Dict[str, Any]:
+        """Fetch all orders for a specific customer."""
+        return await self._make_request("GET", f"/customers/{customer_id}/orders.json")
 
     # -------------------------------------------------------------
     # Product/Inventory Interactions

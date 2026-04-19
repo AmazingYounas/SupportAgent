@@ -20,7 +20,7 @@ Event semantics (corrected):
 import asyncio
 import logging
 import time
-from typing import Callable, Awaitable
+from typing import Callable, Awaitable, Optional
 
 from fastapi import WebSocket
 
@@ -38,6 +38,7 @@ async def run_pipeline(
     agent: SupportAgent,
     websocket: WebSocket,
     send_event: Callable[[dict], Awaitable[None]],
+    caller_context: Optional[str] = None,
 ) -> None:
     """
     Execute one full STT → LLM → TTS turn.
@@ -70,8 +71,14 @@ async def run_pipeline(
 
         # ── 2. LLM + TTS (overlapping) ────────────────────────────────────── #
         memory = session.memory
-        if not memory.get_messages():
-            memory.set_system_prompt(SYSTEM_PROMPT)
+        
+        # ALWAYS establish/refresh system prompt if caller_context is provided
+        # This ensures that even restored sessions get the latest identification.
+        system_prompt = SYSTEM_PROMPT
+        if caller_context:
+            system_prompt = f"{system_prompt}\n\n--- CALLER CONTEXT ---\n{caller_context}\n"
+        
+        memory.set_system_prompt(system_prompt)
         memory.add_user_message(transcript)
 
         state = ConversationState(
@@ -81,8 +88,8 @@ async def run_pipeline(
         )
 
         full_response    = ""
-        first_token_ts:  float | None = None
-        first_audio_ts:  float | None = None
+        first_token_ts:  Optional[float] = None
+        first_audio_ts:  Optional[float] = None
         audio_sent       = False
         ai_start_sent    = False
         pending_text     = ""
@@ -195,6 +202,15 @@ async def run_pipeline(
         if full_response:
             memory.add_ai_message(full_response)
             
+            # Check for [HANGUP] tag which indicates the AI wants to end the call
+            if "[HANGUP]" in full_response:
+                logger.info(f"[Pipeline:{session.session_id}] 🛑 HANGUP detected in AI response. Closing connection.")
+                await send_event({"type": "event", "name": "hangup"})
+                # Briefly wait for the event to send before closing
+                await asyncio.sleep(0.5) 
+                await websocket.close()
+                return
+
         if not audio_sent:
             logger.warning(f"[Pipeline:{session.session_id}] ⚠️ TTS produced NO audio")
             await send_event({"type": "event", "name": "error", "message": "ElevenLabs TTS failed to generate audio (Check backend logs for API key / quota errors)"})

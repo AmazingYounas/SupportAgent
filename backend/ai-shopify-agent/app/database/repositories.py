@@ -4,7 +4,7 @@ Services should call repositories instead of directly accessing the database.
 """
 from sqlalchemy.orm import Session
 from typing import Optional, List
-from app.database.models import Customer, Order, Conversation, OrderStatus
+from app.database.models import Customer, Order, Conversation, OrderStatus, Campaign, AgentSettings, CallStatus, CallDirection
 
 
 class CustomerRepository:
@@ -101,12 +101,16 @@ class ConversationRepository:
         self.db = db
     
     def create(self, customer_id: int = None, linked_order_id: int = None, 
-               history: list = None) -> Conversation:
+               history: list = None, direction: CallDirection = CallDirection.INBOUND,
+               status: CallStatus = CallStatus.ACTIVE, session_key: str = None) -> Conversation:
         """Create a new conversation."""
         conversation = Conversation(
             customer_id=customer_id,
             linked_order_id=linked_order_id,
-            history=history or []
+            history=history or [],
+            direction=direction,
+            status=status,
+            session_key=session_key
         )
         self.db.add(conversation)
         self.db.commit()
@@ -124,45 +128,112 @@ class ConversationRepository:
             self.db.refresh(conversation)
         return conversation
     
-    def add_summary(self, conversation_id: int, summary: str) -> Conversation:
-        """Add summary to conversation."""
+    def update_status(self, conversation_id: int, status: CallStatus) -> Conversation:
+        """Update conversation status."""
         conversation = self.db.query(Conversation).filter(
             Conversation.id == conversation_id
         ).first()
         if conversation:
+            conversation.status = status
+            self.db.commit()
+            self.db.refresh(conversation)
+        return conversation
+
+    def complete_conversation(self, conversation_id: int, summary: str, outcome: str = None, duration: int = 0) -> Conversation:
+        """Mark conversation as completed with summary and outcome."""
+        conversation = self.db.query(Conversation).filter(
+            Conversation.id == conversation_id
+        ).first()
+        if conversation:
+            conversation.status = CallStatus.COMPLETED
             conversation.summary = summary
+            conversation.outcome = outcome
+            conversation.duration_seconds = duration
             self.db.commit()
             self.db.refresh(conversation)
         return conversation
 
     def get_by_session_key(self, session_key: str) -> Optional[Conversation]:
         """Look up a conversation by its WebSocket/chat session key."""
-        try:
-            return self.db.query(Conversation).filter(
-                Conversation.session_key == session_key
-            ).first()
-        except Exception:
-            # session_key column may not exist on older DBs — fail gracefully
-            return None
+        return self.db.query(Conversation).filter(
+            Conversation.session_key == session_key
+        ).first()
 
-    def upsert_by_session_key(self, session_key: str, history: list) -> Optional[Conversation]:
-        """
-        Create or update a Conversation row keyed by session_key.
-        Used to persist SessionMemory across server restarts.
-        Returns None silently if the column doesn't exist yet (old DB).
-        """
-        try:
-            conversation = self.get_by_session_key(session_key)
-            if conversation:
-                conversation.history = history
-                self.db.commit()
-                self.db.refresh(conversation)
-            else:
-                conversation = Conversation(session_key=session_key, history=history)
-                self.db.add(conversation)
-                self.db.commit()
-                self.db.refresh(conversation)
-            return conversation
-        except Exception:
-            self.db.rollback()
-            return None
+    def upsert_by_session_key(self, session_key: str, history: list, customer_id: int = None) -> Optional[Conversation]:
+        """Create or update a Conversation row keyed by session_key."""
+        conversation = self.get_by_session_key(session_key)
+        if conversation:
+            conversation.history = history
+            # Ensure it's marked as ACTIVE once the connection starts
+            if conversation.status == CallStatus.PENDING:
+                conversation.status = CallStatus.ACTIVE
+            if customer_id:
+                conversation.customer_id = customer_id
+            self.db.commit()
+            self.db.refresh(conversation)
+        else:
+            conversation = Conversation(
+                session_key=session_key, 
+                history=history, 
+                customer_id=customer_id,
+                status=CallStatus.ACTIVE
+            )
+            self.db.add(conversation)
+            self.db.commit()
+            self.db.refresh(conversation)
+        return conversation
+
+    def get_dashboard_history(self, limit: int = 50) -> List[Conversation]:
+        """Fetch historical conversations for the dashboard."""
+        return self.db.query(Conversation).order_by(Conversation.created_at.desc()).limit(limit).all()
+
+    def get_active_calls(self) -> List[Conversation]:
+        """Fetch all currently active calls."""
+        return self.db.query(Conversation).filter(Conversation.status == CallStatus.ACTIVE).all()
+
+
+class CampaignRepository:
+    """Repository for Outbound Campaign management."""
+    
+    def __init__(self, db: Session):
+        self.db = db
+
+    def get_all(self) -> List[Campaign]:
+        return self.db.query(Campaign).all()
+
+    def get_active_by_event(self, event: str) -> List[Campaign]:
+        return self.db.query(Campaign).filter(
+            Campaign.trigger_event == event,
+            Campaign.active == 1
+        ).all()
+
+    def create(self, name: str, trigger_event: str, goal_prompt: str = None) -> Campaign:
+        campaign = Campaign(name=name, trigger_event=trigger_event, goal_prompt=goal_prompt)
+        self.db.add(campaign)
+        self.db.commit()
+        self.db.refresh(campaign)
+        return campaign
+
+
+class AgentSettingsRepository:
+    """Repository for Global Agent Settings."""
+    
+    def __init__(self, db: Session):
+        self.db = db
+
+    def get_settings(self) -> Optional[AgentSettings]:
+        return self.db.query(AgentSettings).first()
+
+    def update_settings(self, voice_id: str = None, base_personality: str = None) -> AgentSettings:
+        settings = self.get_settings()
+        if not settings:
+            settings = AgentSettings(voice_id=voice_id, base_personality=base_personality)
+            self.db.add(settings)
+        else:
+            if voice_id:
+                settings.voice_id = voice_id
+            if base_personality:
+                settings.base_personality = base_personality
+        self.db.commit()
+        self.db.refresh(settings)
+        return settings

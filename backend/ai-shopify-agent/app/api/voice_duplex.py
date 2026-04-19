@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 import asyncio
 import json
 import logging
+import time
 
 from app.api.deps import get_db_optional
 from app.agent.agent import SupportAgent
@@ -13,6 +14,7 @@ from app.voice.session import DuplexSession
 from app.voice.vad import VAD
 from app.voice.pipeline import run_pipeline
 from app.database.repositories import ConversationRepository
+from app.database.models import CallDirection, CallStatus
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -41,17 +43,21 @@ async def voice_duplex_endpoint(
     
     session = DuplexSession(session_id)
     agent = SupportAgent(db)
-    
-    # Restore session from DB if available
+    conversation = None
+
+    # 🚀 INITIALIZE/RESTORE SESSION
     if db:
         try:
             repo = ConversationRepository(db)
-            conversation = repo.get_by_session_key(session_id)
+            # Create or find existing conversation for this session
+            conversation = repo.upsert_by_session_key(session_id, [])
+            logger.info(f"[Duplex] 🏁 DB Session Initialized (ID: {conversation.id})")
+            
             if conversation and conversation.history:
                 session.memory.restore_from(conversation.history)
                 logger.info(f"[Duplex] 📚 Restored {len(conversation.history)} messages")
         except Exception as e:
-            logger.warning(f"[Duplex] Could not restore session: {e}")
+            logger.warning(f"[Duplex] Could not init/restore session: {e}", exc_info=True)
     
     async def send_event(data: dict) -> None:
         """Send JSON event to client (non-blocking)."""
@@ -64,6 +70,66 @@ async def voice_duplex_endpoint(
     # VAD Callbacks
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     
+    # 🚀 CALLER IDENTITY LOOKUP
+    caller_phone = websocket.query_params.get("caller_phone")
+    caller_context = ""
+    
+    if caller_phone:
+        logger.info(f"[Duplex:{session_id}] 🔍 Looking up caller: {caller_phone}")
+        try:
+            from app.services.shopify_service import ShopifyService
+            shopify = ShopifyService()
+            
+            if not shopify._configured:
+                logger.warning(f"[Duplex:{session_id}] ⚠️ ShopifyService not configured. Skipping lookup.")
+            else:
+                customer_resp = await shopify.search_customer_by_phone(caller_phone)
+            customers = customer_resp.get("customers", [])
+            
+            if customers:
+                customer = customers[0]
+                name = f"{customer.get('first_name', '')} {customer.get('last_name', '')}".strip()
+                logger.info(f"[Duplex:{session_id}] 👤 Found Customer: {name} (ID: {customer.get('id')})")
+                
+                # UPDATE DB with Customer Info
+                if db and conversation:
+                    try:
+                        # Upsert the customer locally first
+                        from app.database.repositories import CustomerRepository
+                        cust_repo = CustomerRepository(db)
+                        local_customer = cust_repo.get_by_shopify_id(str(customer["id"]))
+                        if not local_customer:
+                            local_customer = cust_repo.create(
+                                shopify_customer_id=str(customer["id"]),
+                                email=customer.get("email"),
+                                phone=caller_phone,
+                                name=name
+                            )
+                        # Link to conversation
+                        repo = ConversationRepository(db)
+                        repo.upsert_by_session_key(session_id, [], customer_id=local_customer.id)
+                    except Exception as e:
+                        logger.warning(f"[Duplex] Could not link customer to DB: {e}")
+
+                orders_resp = await shopify.get_customer_orders(customer["id"])
+                orders = orders_resp.get("orders", [])
+                logger.info(f"[Duplex:{session_id}] 📦 Found {len(orders)} orders for {name}")
+                
+                if orders:
+                    order_list = []
+                    for o in orders[:3]:
+                        items = ", ".join([item.get("title") for item in o.get("line_items", [])])
+                        order_list.append(f"Order #{o.get('order_number')} (ID: {o.get('id')}, Status: {o.get('financial_status')}, Items: {items})")
+                    
+                    orders_str = "\n".join(order_list)
+                    caller_context = f"CALLER IDENTIFIED: {name} (Phone: {caller_phone}).\nACTIVE ORDERS:\n{orders_str}\n\nINSTRUCTION: Greet the user by name. If they have multiple orders, ASK which one they are inquiring about. They may identify the order by ID or by product name."
+                else:
+                    caller_context = f"CALLER IDENTIFIED: {name} (Phone: {caller_phone}). No active orders found."
+            else:
+                logger.info(f"[Duplex:{session_id}] 👤 Caller not found in Shopify")
+        except Exception as e:
+            logger.error(f"[Duplex:{session_id}] Error during caller lookup: {e}")
+
     async def on_speech_start() -> None:
         """Triggered when VAD detects speech beginning."""
         nonlocal stt_task, stt_audio_queue, final_stt_transcript, last_partial_transcript
@@ -103,6 +169,7 @@ async def voice_duplex_endpoint(
                 agent=agent,
                 websocket=websocket,
                 send_event=send_event,
+                caller_context=caller_context
             )
             logger.info(f"[Duplex:{session_id}] ✅ Pipeline completed")
         except asyncio.CancelledError:
@@ -115,7 +182,7 @@ async def voice_duplex_endpoint(
                 "message": "I encountered an error. Please try again."
             })
         finally:
-            # Persist session to DB
+            # Persist intermediate history only (don't mark COMPLETED here)
             if db:
                 try:
                     repo = ConversationRepository(db)
@@ -123,8 +190,9 @@ async def voice_duplex_endpoint(
                     if history:
                         repo.upsert_by_session_key(session_id, history)
                 except Exception as e:
-                    logger.warning(f"[Duplex] Could not persist session: {e}")
+                    logger.warning(f"[Duplex] Could not save history: {e}")
 
+    session.start_time = time.time()
     async def on_speech_end(audio_buffer: bytes) -> None:
         """
         Triggered when VAD detects speech ending.
@@ -140,12 +208,12 @@ async def voice_duplex_endpoint(
             pass
         
         if stt_task and not stt_task.done():
-            # Wait for STT to finish processing.
+            # Wait for STT to finish processing briefly.
+            # We don't want to block the entire VAD loop for 8 seconds if ElevenLabs is slow to say 'done'.
             try:
-                await asyncio.wait_for(stt_task, timeout=8.0)
+                await asyncio.wait_for(stt_task, timeout=1.5)
             except asyncio.TimeoutError:
-                logger.warning(f"[Duplex:{session_id}] ⚠️ STT task timed out after 8s, cancelling")
-                stt_task.cancel()
+                logger.warning(f"[Duplex:{session_id}] ⚠️ STT completion timed out, proceeding with current transcript")
             except Exception as e:
                 logger.error(f"[Duplex:{session_id}] STT task error: {e}")
         
@@ -177,7 +245,21 @@ async def voice_duplex_endpoint(
         
         pipeline_task = asyncio.create_task(_run_pipeline_wrapper(transcript))
         session.set_pipeline_task(pipeline_task)
+
+    # 🚀 AUTO-GREETING / OUTBOUND START
+    # For Outbound, we check if there is a goal first
+    is_outbound = conversation and conversation.direction == CallDirection.OUTBOUND
+    trigger_text = "[USER_CONNECTED]"
     
+    if is_outbound:
+        # For outbound, the AI should speak first with the specific script
+        # We'll trigger it with a special token that indicates it's an outbound call start
+        trigger_text = "[START_OUTBOUND_CALL]"
+        logger.info(f"[Duplex:{session_id}] 📞 Starting Outbound Workflow")
+
+    greeting_task = asyncio.create_task(_run_pipeline_wrapper(trigger_text))
+    session.set_pipeline_task(greeting_task)
+
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     # Main Loop (FIXED: True Live Streaming overlap)
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -247,7 +329,7 @@ async def voice_duplex_endpoint(
                     audio_chunk_count += 1
                     audio_byte_count += len(message["bytes"])
                     if audio_chunk_count <= 5 or audio_chunk_count % 10 == 0:
-                        logger.info(
+                        logger.debug(
                             f"[Duplex:{session_id}] 📦 Audio chunk #{audio_chunk_count}: "
                             f"{len(message['bytes'])}b (total: {audio_byte_count:,}b)"
                         )
@@ -327,7 +409,24 @@ async def voice_duplex_endpoint(
     except Exception as e:
         logger.error(f"[Duplex:{session_id}] Main loop error: {e}", exc_info=True)
     finally:
-        # Clean shutdown
+        # Clean shutdown and final database update
+        duration = int(time.time() - session.start_time) if hasattr(session, 'start_time') else 0
+        if db:
+            try:
+                repo = ConversationRepository(db)
+                history = session.memory.serialize()
+                # Mark as completed and save final history
+                repo.upsert_by_session_key(session_id, history)
+                repo.complete_conversation(
+                    conversation_id=conversation.id if conversation else None,
+                    summary="Call ended." if not history else f"AI Voice Session ({len(history)} turns)",
+                    outcome="COMPLETED",
+                    duration=duration
+                )
+                logger.info(f"[Duplex:{session_id}] 🏁 Call finalized in DB (Duration: {duration}s)")
+            except Exception as e:
+                logger.warning(f"[Duplex] Finalization error: {e}")
+
         await stt_audio_queue.put(None)
         await vad.flush()
         await session.cancel_pipeline()

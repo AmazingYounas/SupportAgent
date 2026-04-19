@@ -1,5 +1,5 @@
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
-from typing import List
+from typing import List, Optional
 
 # Message type → class mapping for deserialization
 _MSG_TYPES = {
@@ -33,7 +33,7 @@ class SessionMemory:
     def add_ai_message(self, content: str):
         self._messages.append(AIMessage(content=content))
 
-    def remove_last_user_message(self, content: str | None = None) -> None:
+    def remove_last_user_message(self, content: Optional[str] = None) -> None:
         """
         Remove the most recent user message if present.
         If `content` is provided, only remove when content matches exactly.

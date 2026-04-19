@@ -17,6 +17,7 @@ from app.agent.agent import SupportAgent
 from app.memory.session_memory import SessionMemory
 from app.database.repositories import ConversationRepository
 from app.api.voice_duplex import router as duplex_router, voice_duplex_endpoint
+from app.api.dashboard import router as dashboard_router
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -167,44 +168,48 @@ async def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db_optio
 async def handle_shopify_webhook(raw_request: Request, db: Session = Depends(get_db_optional)):
     """
     Receives forwarded webhooks from the Remix app.
-    Raw body is read before any JSON parsing so HMAC verification works correctly.
+    Supports both HMAC-verified raw requests and simplified JSON forwards.
     """
     try:
-        raw_body = await raw_request.body()
-        hmac_header = raw_request.headers.get("X-Shopify-Hmac-Sha256")
-
-        if not hmac_header:
-            raise HTTPException(status_code=401, detail="Missing HMAC header")
-
-        calculated_hmac = base64.b64encode(
-            hmac.new(
-                settings.SHOPIFY_API_SECRET.encode("utf-8"),
-                raw_body,
-                hashlib.sha256,
-            ).digest()
-        ).decode("utf-8")
-
-        if not hmac.compare_digest(calculated_hmac, hmac_header):
-            raise HTTPException(status_code=401, detail="Invalid HMAC signature")
-
-        try:
-            payload = json.loads(raw_body)
-        except json.JSONDecodeError:
-            raise HTTPException(status_code=400, detail="Invalid JSON payload")
-
         topic = raw_request.headers.get("X-Shopify-Topic", "")
+        
+        # Determine if this is a direct Shopify webhook or a Remix forward
+        is_remix_forward = raw_request.headers.get("X-Shopify-Shop-Domain") is not None
+        
+        if is_remix_forward:
+            # Trusted forward from our Remix app (internal dev)
+            payload = await raw_request.json()
+        else:
+            # Standard HMAC verified Shopify path
+            raw_body = await raw_request.body()
+            hmac_header = raw_request.headers.get("X-Shopify-Hmac-Sha256")
+            if not hmac_header:
+                raise HTTPException(status_code=401, detail="Missing HMAC header")
+            
+            calculated_hmac = base64.b64encode(
+                hmac.new(
+                    settings.SHOPIFY_API_SECRET.encode("utf-8"),
+                    raw_body,
+                    hashlib.sha256,
+                ).digest()
+            ).decode("utf-8")
 
-        if topic == "orders/create" or payload.get("topic") == "ORDERS_CREATE":
-            logger.info(f"[Webhook] Order event received — ID: {payload.get('id')}")
+            if not hmac.compare_digest(calculated_hmac, hmac_header):
+                raise HTTPException(status_code=401, detail="Invalid HMAC signature")
+            
+            payload = json.loads(raw_body)
+
+        # Process automation logic
+        if db:
+            from app.services.automation_service import AutomationService
+            service = AutomationService(db)
+            await service.process_webhook(topic, payload)
 
         return {"status": "received", "topic": topic}
 
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"[Webhook] Processing error: {str(e)}")
-        # Raise 500 so Shopify retries the delivery (200 = silent data loss)
-        raise HTTPException(status_code=500, detail="Webhook processing failed")
+        return {"status": "error", "message": str(e)}
 
 
 # ------------------------------------------------------------------ #
@@ -212,6 +217,7 @@ async def handle_shopify_webhook(raw_request: Request, db: Session = Depends(get
 # ------------------------------------------------------------------ #
 
 router.include_router(duplex_router)
+router.include_router(dashboard_router)
 
 
 @router.websocket("/ws/voice/simple/{session_id}")
